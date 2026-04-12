@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Standout — Get the Job, Not Just the Resume</title>
+  <meta name="description" content="The AI career platform that turns your experience into interviews. Bullet transformer, recruiter simulation, market comparison, and coaching — one $29 payment, forever."/>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{font-family:'DM Sans',sans-serif;background:#09101a;color:#ede8df;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+
+    :root{
+      --o:#f4722b;--ol:#f79559;
+      --navy:#09101a;--b1:#0f1c2e;--b2:#162436;--b3:#1d2f42;
+      --cr:#ede8df;--mu:rgba(237,232,223,.55);--mu2:rgba(237,232,223,.28);
+      --line:rgba(244,114,43,.18);--line2:rgba(244,114,43,.32);
+      --green:#3db87a;
+    }
+
+    /* ── NAV ── */
+    nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(9,16,26,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--line)}
+    .nav-logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--cr);display:flex;align-items:center;gap:8px}
+    .logo-dot{width:9px;height:9px;background:var(--o);border-radius:50%}
+    .nav-links{display:flex;align-items:center;gap:32px}
+    .nav-links a{font-size:14px;color:var(--mu);text-decoration:none;transition:color .18s;font-weight:500}
+    .nav-links a:hover{color:var(--cr)}
+    .nav-cta{background:var(--o);color:#fff;border:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none;transition:all .18s;font-family:'DM Sans',sans-serif}
+    .nav-cta:hover{background:var(--ol);transform:translateY(-1px);box-shadow:0 5px 18px rgba(244,114,43,.3)}
+    @media(max-width:600px){.nav-links{display:none}nav{padding:14px 20px}}
+
+    /* ── HERO ── */
+    .hero{padding:140px 24px 80px;text-align:center;position:relative;overflow:hidden}
+    .hero-glow{position:absolute;top:0;left:50%;transform:translateX(-50%);width:700px;height:500px;background:radial-gradient(ellipse,rgba(244,114,43,.11) 0%,transparent 65%);pointer-events:none}
+    .hero-grid{position:absolute;inset:0;opacity:.025;background-image:radial-gradient(circle,rgba(244,114,43,.9) 1px,transparent 1px);background-size:30px 30px;pointer-events:none}
+    .hero-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);background:rgba(244,114,43,.1);border:1px solid var(--line);padding:6px 16px;border-radius:20px;margin-bottom:28px}
+    .hero-tag-dot{width:6px;height:6px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    h1{font-family:'DM Serif Display',serif;font-size:clamp(36px,6vw,72px);line-height:1.06;color:var(--cr);margin-bottom:20px;letter-spacing:-.5px;max-width:780px;margin-left:auto;margin-right:auto}
+    h1 i{font-style:italic;color:var(--o)}
+    .hero-sub{font-size:18px;color:var(--mu);max-width:500px;margin:0 auto 36px;line-height:1.7;font-weight:400}
+    .hero-actions{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;margin-bottom:48px}
+    .btn-primary{background:var(--o);color:#fff;border:none;padding:16px 36px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .2s;font-family:'DM Sans',sans-serif;letter-spacing:.1px}
+    .btn-primary:hover{background:var(--ol);transform:translateY(-2px);box-shadow:0 10px 28px rgba(244,114,43,.35)}
+    .btn-secondary{background:transparent;color:var(--cr);border:1px solid rgba(237,232,223,.18);padding:16px 32px;border-radius:10px;font-size:15px;font-weight:500;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:8px;transition:all .18s;font-family:'DM Sans',sans-serif}
+    .btn-secondary:hover{border-color:rgba(237,232,223,.38);background:rgba(255,255,255,.04)}
+    .hero-proof{display:flex;align-items:center;justify-content:center;gap:24px;flex-wrap:wrap}
+    .proof-item{font-size:13px;color:var(--mu);display:flex;align-items:center;gap:6px;font-weight:500}
+    .proof-item::before{content:'✓';color:var(--green);font-weight:700}
+
+    /* ── DEMO WIDGET ── */
+    .demo-section{padding:0 24px 80px;max-width:760px;margin:0 auto}
+    .demo-label{text-align:center;font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:14px}
+    .demo-card{background:var(--b1);border:2px solid var(--line2);border-radius:16px;padding:32px;position:relative;overflow:hidden}
+    .demo-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--o),var(--ol))}
+    .demo-title{font-family:'DM Serif Display',serif;font-size:24px;color:var(--cr);margin-bottom:6px}
+    .demo-sub{font-size:14px;color:var(--mu);margin-bottom:22px;line-height:1.6}
+    .demo-examples{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .demo-ex{font-size:12px;background:rgba(244,114,43,.08);border:1px solid var(--line);color:var(--o);padding:5px 12px;border-radius:14px;cursor:pointer;transition:all .15s;font-weight:500}
+    .demo-ex:hover{background:rgba(244,114,43,.16)}
+    .demo-input-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start;margin-bottom:6px}
+    @media(max-width:480px){.demo-input-row{grid-template-columns:1fr;grid-template-rows:auto auto}}
+    textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(244,114,43,.14);border-radius:9px;padding:12px 14px;color:var(--cr);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;resize:none;outline:none;transition:border-color .18s}
+    textarea:focus{border-color:rgba(244,114,43,.5)}
+    textarea::placeholder{color:var(--mu2)}
+    .demo-btn{background:var(--o);color:#fff;border:none;padding:12px 22px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;white-space:nowrap;display:flex;align-items:center;gap:7px}
+    .demo-btn:hover:not(:disabled){background:var(--ol);box-shadow:0 4px 16px rgba(244,114,43,.28)}
+    .demo-btn:disabled{opacity:.4;cursor:not-allowed}
+    .demo-result{margin-top:20px;animation:up .3s ease}
+    @keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+    .demo-original{font-size:12px;color:var(--mu2);text-decoration:line-through;margin-bottom:12px;font-style:italic}
+    .demo-ver{background:var(--b2);border-radius:10px;padding:14px 16px;border-left:3px solid var(--o);margin-bottom:10px}
+    .demo-ver-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+    .demo-ver-text{font-size:14px;color:var(--cr);line-height:1.65}
+    .demo-ver-why{font-size:12px;color:var(--mu);margin-top:5px;font-style:italic}
+    .copy-btn{font-size:11px;background:rgba(244,114,43,.1);border:1px solid var(--line);color:var(--o);padding:4px 10px;border-radius:5px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .15s}
+    .copy-btn:hover{background:rgba(244,114,43,.18)}
+    .demo-cta{margin-top:20px;padding-top:20px;border-top:1px solid var(--line);text-align:center}
+    .demo-cta p{font-size:14px;color:var(--mu);margin-bottom:14px}
+    .spin{width:16px;height:16px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-msg{padding:16px 0;text-align:center;color:var(--mu);font-size:14px;display:flex;align-items:center;justify-content:center;gap:8px}
+
+    /* ── STATS BAR ── */
+    .stats-bar{background:var(--b1);border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:28px 24px}
+    .stats-inner{max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:20px;text-align:center}
+    @media(max-width:600px){.stats-inner{grid-template-columns:repeat(2,1fr)}}
+    .stat-num{font-family:'DM Serif Display',serif;font-size:34px;color:var(--o);line-height:1;margin-bottom:4px}
+    .stat-label{font-size:13px;color:var(--mu);font-weight:500}
+
+    /* ── FEATURES ── */
+    .features{padding:80px 24px;max-width:960px;margin:0 auto}
+    .section-tag{text-align:center;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:14px}
+    .section-title{font-family:'DM Serif Display',serif;font-size:clamp(28px,4vw,44px);color:var(--cr);text-align:center;margin-bottom:12px;line-height:1.15}
+    .section-sub{font-size:16px;color:var(--mu);text-align:center;max-width:500px;margin:0 auto 56px;line-height:1.7}
+    .features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    @media(max-width:760px){.features-grid{grid-template-columns:1fr}}
+    .feature-card{background:var(--b1);border:1px solid var(--line);border-radius:14px;padding:26px;transition:all .2s}
+    .feature-card:hover{border-color:var(--line2);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3)}
+    .feature-card.featured{border-color:var(--line2);background:linear-gradient(135deg,var(--b1),rgba(244,114,43,.06))}
+    .feature-icon{font-size:28px;margin-bottom:14px}
+    .feature-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--cr);margin-bottom:8px;line-height:1.3}
+    .feature-desc{font-size:14px;color:var(--mu);line-height:1.65}
+    .feature-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--o);background:rgba(244,114,43,.12);border:1px solid var(--line);padding:3px 9px;border-radius:10px;margin-bottom:12px}
+
+    /* ── HOW IT WORKS ── */
+    .how{padding:80px 24px;background:var(--b1);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .how-inner{max-width:680px;margin:0 auto}
+    .steps-list{display:flex;flex-direction:column;gap:0}
+    .step-row{display:flex;gap:20px;padding:24px 0;border-bottom:1px solid rgba(244,114,43,.1);position:relative}
+    .step-row:last-child{border-bottom:none}
+    .step-num-circle{width:40px;height:40px;border-radius:50%;background:rgba(244,114,43,.12);border:1.5px solid var(--line2);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:18px;color:var(--o);flex-shrink:0;margin-top:2px}
+    .step-content{}
+    .step-title-row{font-size:16px;font-weight:600;color:var(--cr);margin-bottom:4px;display:flex;align-items:center;gap:10px}
+    .step-icon{font-size:16px}
+    .step-desc{font-size:14px;color:var(--mu);line-height:1.65}
+
+    /* ── COMPARISON ── */
+    .comparison{padding:80px 24px;max-width:780px;margin:0 auto}
+    .compare-table{background:var(--b1);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+    .compare-header{display:grid;grid-template-columns:1fr 1fr 1fr;background:var(--b2);padding:16px 24px;border-bottom:1px solid var(--line)}
+    .compare-col{text-align:center;font-size:13px;font-weight:600;color:var(--mu)}
+    .compare-col.standout{color:var(--o)}
+    .compare-col.standout span{display:block;font-family:'DM Serif Display',serif;font-size:18px;color:var(--cr);margin-bottom:2px}
+    .compare-row{display:grid;grid-template-columns:1fr 1fr 1fr;padding:14px 24px;border-bottom:1px solid rgba(255,255,255,.04);align-items:center}
+    .compare-row:last-child{border-bottom:none}
+    .compare-feature{font-size:14px;color:var(--mu)}
+    .compare-val{text-align:center;font-size:14px}
+    .compare-val.yes{color:var(--green);font-weight:600}
+    .compare-val.no{color:rgba(237,232,223,.2)}
+    .compare-val.highlight{color:var(--o);font-weight:600}
+
+    /* ── PRICING ── */
+    .pricing{padding:80px 24px;text-align:center}
+    .pricing-card{background:linear-gradient(160deg,var(--b1),#0d1a2e);border:2px solid var(--line2);border-radius:20px;padding:48px 40px;max-width:500px;margin:0 auto;position:relative;overflow:hidden}
+    .pricing-card::before{content:'';position:absolute;top:-40px;right:-40px;width:200px;height:200px;background:radial-gradient(circle,rgba(244,114,43,.12),transparent 70%);pointer-events:none}
+    .pricing-badge{display:inline-block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#fff;background:var(--o);padding:5px 14px;border-radius:20px;margin-bottom:20px}
+    .pricing-price{font-family:'DM Serif Display',serif;font-size:68px;color:var(--o);line-height:1;letter-spacing:-3px;margin-bottom:4px}
+    .pricing-price sup{font-size:28px;vertical-align:super;letter-spacing:0}
+    .pricing-cadence{font-size:14px;color:var(--mu);margin-bottom:8px;font-weight:500}
+    .pricing-compare{font-size:13px;color:var(--mu2);margin-bottom:32px}
+    .pricing-compare s{color:rgba(237,232,223,.3)}
+    .perks-list{list-style:none;margin-bottom:32px;text-align:left}
+    .perks-list li{font-size:14px;color:rgba(237,232,223,.75);padding:8px 0;display:flex;align-items:flex-start;gap:10px;border-bottom:1px solid rgba(255,255,255,.04)}
+    .perks-list li:last-child{border-bottom:none}
+    .perks-list li::before{content:'✓';color:var(--green);font-weight:700;font-size:13px;margin-top:1px;flex-shrink:0}
+    .pricing-btn{background:var(--o);color:#fff;border:none;padding:18px 0;border-radius:10px;font-size:17px;font-weight:600;cursor:pointer;width:100%;font-family:'DM Sans',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:9px;text-decoration:none}
+    .pricing-btn:hover{background:var(--ol);transform:translateY(-2px);box-shadow:0 10px 28px rgba(244,114,43,.38)}
+    .pricing-note{font-size:12px;color:var(--mu2);margin-top:14px}
+    .guarantee{display:flex;align-items:center;gap:8px;justify-content:center;font-size:13px;color:var(--mu);margin-top:20px}
+    .guarantee-icon{font-size:18px}
+
+    /* ── OBJECTIONS ── */
+    .faq{padding:80px 24px;max-width:680px;margin:0 auto}
+    .faq-item{border-bottom:1px solid var(--line);padding:22px 0}
+    .faq-item:last-child{border-bottom:none}
+    .faq-q{font-size:16px;font-weight:600;color:var(--cr);margin-bottom:8px;cursor:pointer}
+    .faq-a{font-size:14px;color:var(--mu);line-height:1.7}
+
+    /* ── FOOTER ── */
+    footer{background:var(--b1);border-top:1px solid var(--line);padding:36px 24px;text-align:center}
+    .footer-logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--cr);margin-bottom:8px;display:flex;align-items:center;gap:7px;justify-content:center}
+    footer p{font-size:13px;color:var(--mu2);margin-top:6px}
+    footer a{color:var(--mu);text-decoration:none;margin:0 10px;font-size:13px}
+    footer a:hover{color:var(--o)}
+
+    /* ── STICKY MOBILE CTA ── */
+    .mobile-cta{display:none;position:fixed;bottom:0;left:0;right:0;z-index:99;padding:14px 20px;background:rgba(9,16,26,.97);backdrop-filter:blur(16px);border-top:1px solid var(--line)}
+    .mobile-cta a{display:flex;align-items:center;justify-content:center;gap:8px;background:var(--o);color:#fff;padding:15px;border-radius:10px;font-size:16px;font-weight:600;text-decoration:none;transition:all .18s}
+    @media(max-width:640px){.mobile-cta{display:block}}
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo"><div class="logo-dot"></div>Standout</div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#how">How it works</a>
+    <a href="#pricing">Pricing</a>
+  </div>
+  <a href="#pricing" class="nav-cta">Launch Price — $29 →</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-tag"><div class="hero-tag-dot"></div>🔥 Launch Week — $29 instead of $49</div>
+  <h1>Stop writing resumes.<br/>Start getting <i>interviews.</i></h1>
+  <p class="hero-sub">The AI platform that transforms your experience into callbacks — with bullet coaching, recruiter simulation, and market comparison.</p>
+  <div class="hero-actions">
+    <a href="#demo" class="btn-primary">Try it free →</a>
+    <a href="#pricing" class="btn-secondary">See pricing</a>
+  </div>
+  <div class="hero-proof">
+    <div class="proof-item">No subscription ever</div>
+    <div class="proof-item">Instant access</div>
+    <div class="proof-item">9 AI career tools</div>
+    <div class="proof-item" style="color:var(--o);font-weight:600">Launch price ends in <span id="hero-countdown" style="font-weight:700">7d 00h 00m</span></div>
+  </div>
+</section>
+
+<!-- COUNTDOWN BANNER -->
+<div id="countdown-banner" style="background:var(--o);padding:12px 24px;text-align:center;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap">
+  <span style="font-size:13px;font-weight:600;color:#fff;letter-spacing:.3px">🔥 Launch Week Special — Save $20</span>
+  <div style="display:flex;align-items:center;gap:6px">
+    <div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px 10px;text-align:center;min-width:48px">
+      <div id="cd-days" style="font-size:18px;font-weight:700;color:#fff;line-height:1;font-family:'DM Serif Display',serif">7</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:2px">days</div>
+    </div>
+    <span style="color:rgba(255,255,255,.6);font-size:16px;font-weight:700">:</span>
+    <div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px 10px;text-align:center;min-width:48px">
+      <div id="cd-hours" style="font-size:18px;font-weight:700;color:#fff;line-height:1;font-family:'DM Serif Display',serif">00</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:2px">hours</div>
+    </div>
+    <span style="color:rgba(255,255,255,.6);font-size:16px;font-weight:700">:</span>
+    <div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px 10px;text-align:center;min-width:48px">
+      <div id="cd-mins" style="font-size:18px;font-weight:700;color:#fff;line-height:1;font-family:'DM Serif Display',serif">00</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:2px">mins</div>
+    </div>
+    <span style="color:rgba(255,255,255,.6);font-size:16px;font-weight:700">:</span>
+    <div style="background:rgba(0,0,0,.2);border-radius:6px;padding:6px 10px;text-align:center;min-width:48px">
+      <div id="cd-secs" style="font-size:18px;font-weight:700;color:#fff;line-height:1;font-family:'DM Serif Display',serif">00</div>
+      <div style="font-size:9px;color:rgba(255,255,255,.7);letter-spacing:1px;text-transform:uppercase;margin-top:2px">secs</div>
+    </div>
+  </div>
+  <a href="#pricing" style="background:#fff;color:var(--o);border:none;padding:8px 20px;border-radius:7px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap;font-family:'DM Sans',sans-serif">Get $29 price →</a>
+</div>
+
+<!-- STATS -->
+<div class="stats-bar">
+  <div class="stats-inner">
+    <div><div class="stat-num">80%</div><div class="stat-label">of resumes rejected before a human reads them</div></div>
+    <div><div class="stat-num">6s</div><div class="stat-label">average recruiter scan time per resume</div></div>
+    <div><div class="stat-num">$29</div><div class="stat-label">launch price — regular price $49</div></div>
+    <div><div class="stat-num">9</div><div class="stat-label">AI tools in one platform</div></div>
+  </div>
+</div>
+
+<!-- DEMO -->
+<section id="demo" style="padding:80px 0 0">
+  <div class="demo-section">
+    <div class="demo-label">✦ Try it right now — free, no signup</div>
+    <div class="demo-card">
+      <div class="demo-title">Turn a weak bullet into 3 powerful ones</div>
+      <div class="demo-sub">Paste any sentence from your resume. See the transformation in seconds.</div>
+      <div style="margin-bottom:14px">
+        <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);margin-bottom:8px">Click to try an example:</div>
+        <div class="demo-examples">
+          <span class="demo-ex" onclick="tryExample(this)">"Managed customer accounts"</span>
+          <span class="demo-ex" onclick="tryExample(this)">"Helped with product launches"</span>
+          <span class="demo-ex" onclick="tryExample(this)">"Worked on the sales team"</span>
+          <span class="demo-ex" onclick="tryExample(this)">"Responsible for marketing"</span>
+        </div>
+      </div>
+      <div class="demo-input-row">
+        <textarea id="demo-input" rows="2" placeholder='Or type your own: "I managed customer accounts and helped grow revenue..."'></textarea>
+        <button class="demo-btn" id="demo-btn" onclick="runDemo()">Transform ✦</button>
+      </div>
+      <div id="demo-loading" style="display:none" class="loading-msg"><div class="spin"></div>Transforming your bullet…</div>
+      <div id="demo-result" style="display:none" class="demo-result"></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features" class="features">
+  <div class="section-tag">What's inside</div>
+  <h2 class="section-title">Not just a resume builder.<br/><i>A career platform.</i></h2>
+  <p class="section-sub">Every tool you need from blank page to offer letter — guided step by step.</p>
+  <div class="features-grid">
+    <div class="feature-card featured">
+      <div class="feature-badge">Most Popular</div>
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">Bullet Transformer</div>
+      <div class="feature-desc">Paste "Managed customer accounts." Get back "Owned $12M book of business, improving retention by 9% YoY." Three versions — conservative, impact-forward, and executive.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⏱️</div>
+      <div class="feature-title">6-Second Recruiter Sim</div>
+      <div class="feature-desc">Watch a real-time animation of how a recruiter scans your resume. See exactly what gets noticed, what gets skipped, and whether you'd advance.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <div class="feature-title">Market Comparison</div>
+      <div class="feature-desc">See your percentile ranking among other candidates for your target role. Exactly what top 20% resumes include that yours doesn't.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">Career Positioning</div>
+      <div class="feature-desc">5 guided questions that extract your career story. Builds your headline, executive summary, target roles, and power phrases automatically.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📋</div>
+      <div class="feature-title">Recruiter Feedback</div>
+      <div class="feature-desc">A letter grade (A–F), callback probability, and bullet-by-bullet breakdown — exactly how a senior recruiter reads your resume in 10 seconds.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧑‍💼</div>
+      <div class="feature-title">Coaching Mode</div>
+      <div class="feature-desc">Tell the AI coach your biggest career win in plain English. It asks follow-up questions and turns your story into 3 polished resume bullets.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">✍️</div>
+      <div class="feature-title">Resume Builder</div>
+      <div class="feature-desc">Full ATS-optimized resume generation with 5 tone styles, LinkedIn import, keyword matching, and one-click re-tailoring for any job description.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">Role Intelligence</div>
+      <div class="feature-desc">The exact language, metrics, and framing that hiring managers in your specific function actually look for — IC, Manager, Director, Sales, Product, Data.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🗂️</div>
+      <div class="feature-title">Job Tracker</div>
+      <div class="feature-desc">Track every application and stage. The AI analyzes your pipeline to find patterns — which resume versions, companies, and roles are actually getting you interviews.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="how">
+  <div class="how-inner">
+    <div class="section-tag" style="text-align:center">How it works</div>
+    <h2 class="section-title" style="margin-bottom:12px">Your path to the offer</h2>
+    <p class="section-sub" style="margin-bottom:44px">Follow the steps in order — each one builds on the last.</p>
+    <div class="steps-list">
+      <div class="step-row"><div class="step-num-circle">1</div><div class="step-content"><div class="step-title-row"><span class="step-icon">🎯</span>Define your positioning</div><div class="step-desc">5 questions that extract your career story — what problems you solve, at what scale, and what makes you different from other candidates.</div></div></div>
+      <div class="step-row"><div class="step-num-circle">2</div><div class="step-content"><div class="step-title-row"><span class="step-icon">✍️</span>Build your resume</div><div class="step-desc">Fill in your details or import from LinkedIn. Get a full ATS-optimized resume in under 60 seconds, tailored to the specific role you want.</div></div></div>
+      <div class="step-row"><div class="step-num-circle">3</div><div class="step-content"><div class="step-title-row"><span class="step-icon">📋</span>Get recruiter feedback</div><div class="step-desc">Receive a grade, callback probability, and honest bullet-by-bullet analysis. Know exactly what's working and what's killing your chances.</div></div></div>
+      <div class="step-row"><div class="step-num-circle">4</div><div class="step-content"><div class="step-title-row"><span class="step-icon">⏱️</span>Run the 6-second test</div><div class="step-desc">See what a recruiter actually notices in the first 6 seconds. Fix what's being missed before you apply.</div></div></div>
+      <div class="step-row"><div class="step-num-circle">5</div><div class="step-content"><div class="step-title-row"><span class="step-icon">📊</span>Compare to the market</div><div class="step-desc">See your percentile ranking among other candidates and get specific quick wins to jump percentile before you submit.</div></div></div>
+      <div class="step-row"><div class="step-num-circle">6</div><div class="step-content"><div class="step-title-row"><span class="step-icon">🗂️</span>Track and learn</div><div class="step-desc">Log every application. After a few weeks the AI tells you which resume versions and roles are actually getting you callbacks.</div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="comparison">
+  <div class="section-tag" style="text-align:center">vs. the competition</div>
+  <h2 class="section-title" style="margin-bottom:40px">Why Standout wins</h2>
+  <div class="compare-table">
+    <div class="compare-header">
+      <div class="compare-col">Feature</div>
+      <div class="compare-col standout"><span>Standout</span><s style="color:rgba(237,232,223,.3);font-size:12px">$49</s> $29 launch</div>
+      <div class="compare-col">Others<br/>$29–50/month</div>
+    </div>
+    <div class="compare-row"><div class="compare-feature">Resume builder + cover letters</div><div class="compare-val yes">✓ Unlimited</div><div class="compare-val yes">✓</div></div>
+    <div class="compare-row"><div class="compare-feature">Bullet Transformer</div><div class="compare-val highlight">✦ 3 versions</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">6-Second Recruiter Simulation</div><div class="compare-val highlight">✦ Real-time</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">Market Comparison (percentile)</div><div class="compare-val highlight">✦ Live</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">Career Positioning Builder</div><div class="compare-val highlight">✦ Guided</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">Coaching Mode (story → bullets)</div><div class="compare-val highlight">✦ Conversational</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">Job Tracker with AI Insights</div><div class="compare-val highlight">✦ Pattern learning</div><div class="compare-val no">✗</div></div>
+    <div class="compare-row"><div class="compare-feature">Subscription required</div><div class="compare-val" style="color:var(--green);font-weight:600">Never</div><div class="compare-val no">Always</div></div>
+    <div class="compare-row"><div class="compare-feature">Billing surprises</div><div class="compare-val" style="color:var(--green);font-weight:600">None</div><div class="compare-val no">Frequent</div></div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" class="pricing">
+  <div class="section-tag">Simple pricing</div>
+  <h2 class="section-title" style="margin-bottom:10px">One price.<br/><i>Everything included.</i></h2>
+  <p style="font-size:16px;color:var(--mu);margin-bottom:48px">Competitors charge $29–50 per month. You pay once — and save $20 this week.</p>
+  <div class="pricing-card">
+    <!-- Countdown inside card -->
+    <div style="background:rgba(244,114,43,.1);border:1px solid rgba(244,114,43,.25);border-radius:10px;padding:12px 16px;margin-bottom:24px;text-align:center">
+      <div style="font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);margin-bottom:8px">🔥 Launch price expires in</div>
+      <div style="display:flex;justify-content:center;gap:8px">
+        <div style="text-align:center"><div id="pc-days" style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--cr);line-height:1;font-weight:400">7</div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px">days</div></div>
+        <div style="font-size:24px;color:var(--mu);padding-top:2px">:</div>
+        <div style="text-align:center"><div id="pc-hours" style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--cr);line-height:1;font-weight:400">00</div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px">hours</div></div>
+        <div style="font-size:24px;color:var(--mu);padding-top:2px">:</div>
+        <div style="text-align:center"><div id="pc-mins" style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--cr);line-height:1;font-weight:400">00</div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px">mins</div></div>
+        <div style="font-size:24px;color:var(--mu);padding-top:2px">:</div>
+        <div style="text-align:center"><div id="pc-secs" style="font-family:'DM Serif Display',serif;font-size:28px;color:var(--cr);line-height:1;font-weight:400">00</div><div style="font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:1px;margin-top:2px">secs</div></div>
+      </div>
+    </div>
+    <div class="pricing-badge">Launch Week — Limited Time</div>
+    <!-- Crossed out $49, big $29 -->
+    <div style="margin-bottom:4px">
+      <span style="font-size:22px;color:var(--mu);text-decoration:line-through;font-weight:500;margin-right:10px">$49</span>
+      <span style="font-size:13px;font-weight:600;color:var(--green);background:rgba(61,184,122,.12);padding:3px 10px;border-radius:10px">Save $20</span>
+    </div>
+    <div class="pricing-price"><sup>$</sup>29</div>
+    <div class="pricing-cadence">one-time payment · price goes to $49 after launch week</div>
+    <div class="pricing-compare">vs. <s>$29–50/month</s> competitors charge</div>
+    <ul class="perks-list">
+      <li>All 9 AI career tools, forever</li>
+      <li>Unlimited resume &amp; cover letter generations</li>
+      <li>Bullet Transformer — 3 versions per bullet</li>
+      <li>6-Second Recruiter Simulation</li>
+      <li>Live Market Comparison &amp; percentile ranking</li>
+      <li>Career Positioning Builder</li>
+      <li>Coaching Mode — stories to bullets</li>
+      <li>Job Tracker with AI pattern insights</li>
+      <li>Role Intelligence for 6 job functions</li>
+      <li>No subscription. No renewal. Ever.</li>
+    </ul>
+    <!-- Replace href with your actual Stripe Payment Link -->
+    <a href="https://buy.stripe.com/YOUR_PAYMENT_LINK" class="pricing-btn" id="checkout-btn">
+      🔒 Lock in $29 — Before Price Goes Up
+    </a>
+    <div class="pricing-note">Secure checkout powered by Stripe. Instant access after payment.</div>
+    <div class="guarantee"><span class="guarantee-icon">🛡️</span>Not happy? Email us within 7 days for a full refund.</div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="faq">
+  <div class="section-tag" style="text-align:center">Questions</div>
+  <h2 class="section-title" style="margin-bottom:44px">Honest answers</h2>
+  <div class="faq-item"><div class="faq-q">Is this really a one-time payment?</div><div class="faq-a">Yes. $29 during launch week, then $49 after that — one time, forever. No monthly billing, no renewal, no credit card surprises. Every competitor traps you with subscriptions. We don't.</div></div>
+  <div class="faq-item"><div class="faq-q">When does the $29 launch price end?</div><div class="faq-a">7 days from your first visit to this page. The countdown you see is live and tied to your browser. When it hits zero the price goes to $49 — still a one-time payment, just $20 more.</div></div>
+  <div class="faq-item"><div class="faq-q">What makes this different from ChatGPT or other resume tools?</div><div class="faq-a">ChatGPT generates generic output with no ATS awareness. Other tools stop at "here's your resume." Standout adds what's actually missing: recruiter simulation, market benchmarking, bullet-level coaching, and pattern learning across your applications.</div></div>
+  <div class="faq-item"><div class="faq-q">Do I need any technical skills?</div><div class="faq-a">None at all. The whole app is guided step by step. If you can type in a text box, you can use Standout. We designed it so a 10-year-old could follow along.</div></div>
+  <div class="faq-item"><div class="faq-q">What if I'm not job searching right now?</div><div class="faq-a">The Bullet Transformer and Coaching Mode are useful any time — performance reviews, LinkedIn profiles, bios. Since it's a lifetime purchase, it's there whenever you need it.</div></div>
+  <div class="faq-item"><div class="faq-q">Is my data private?</div><div class="faq-a">Your resume data is sent to Claude (Anthropic's AI) to generate results — the same model powering Claude.ai. Anthropic has strong privacy policies. We never store or sell your personal information.</div></div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo"><div style="width:8px;height:8px;background:var(--o);border-radius:50%"></div>Standout</div>
+  <div style="margin-top:12px">
+    <a href="/cdn-cgi/l/email-protection#a7cfc2cbcbc8e7d3d5ded4d3c6c9c3c8d2d389c4c8ca">Contact</a>
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+  </div>
+  <p style="margin-top:16px">© 2026 Standout. Built to get you hired.</p>
+</footer>
+
+<!-- MOBILE STICKY CTA -->
+<div class="mobile-cta">
+  <a href="#pricing">🔥 Lock in $29 Launch Price — <span id="mobile-cd">7d left</span></a>
+</div>
+
+<script>
+  // ── COUNTDOWN ──
+  function getDeadline() {
+    let d = localStorage.getItem('so_deadline');
+    if (!d) {
+      const nd = new Date();
+      nd.setDate(nd.getDate() + 7);
+      d = nd.toISOString();
+      localStorage.setItem('so_deadline', d);
+    }
+    return new Date(d);
+  }
+  function pad(n) { return String(n).padStart(2,'0'); }
+  function tick() {
+    const diff = getDeadline() - new Date();
+    const expired = diff <= 0;
+    const days  = expired ? 0 : Math.floor(diff/(1000*60*60*24));
+    const hours = expired ? 0 : Math.floor((diff%(1000*60*60*24))/(1000*60*60));
+    const mins  = expired ? 0 : Math.floor((diff%(1000*60*60))/(1000*60));
+    const secs  = expired ? 0 : Math.floor((diff%(1000*60))/1000);
+    const ids = {
+      'cd-days':days,'cd-hours':pad(hours),'cd-mins':pad(mins),'cd-secs':pad(secs),
+      'pc-days':days,'pc-hours':pad(hours),'pc-mins':pad(mins),'pc-secs':pad(secs)
+    };
+    Object.entries(ids).forEach(([id,val])=>{ const el=document.getElementById(id); if(el) el.textContent=val; });
+    const hc = document.getElementById('hero-countdown');
+    if (hc) hc.textContent = `${days}d ${pad(hours)}h ${pad(mins)}m`;
+    const mc = document.getElementById('mobile-cd');
+    if (mc) mc.textContent = expired ? 'price now $49' : `${days}d ${pad(hours)}h left`;
+    if (expired) {
+      const btn = document.getElementById('checkout-btn');
+      if (btn) btn.innerHTML = '🔒 Get Standout for $49';
+    }
+  }
+  tick();
+  setInterval(tick, 1000);
+
+  // ── DEMO WIDGET ──
+  async function runDemo() {
+    const input = document.getElementById('demo-input').value.trim();
+    if (!input) return;
+    document.getElementById('demo-btn').disabled = true;
+    document.getElementById('demo-result').style.display = 'none';
+    document.getElementById('demo-loading').style.display = 'flex';
+    try {
+      const response = await fetch('/api/transform', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bullet: input })
+      });
+      const data = await response.json();
+      renderResult(input, data);
+    } catch (e) {
+      document.getElementById('demo-loading').style.display = 'none';
+      document.getElementById('demo-btn').disabled = false;
+      alert('Something went wrong. Please try again.');
+    }
+  }
+
+  function tryExample(el) {
+    const text = el.textContent.replace(/"/g, '');
+    document.getElementById('demo-input').value = text;
+    setTimeout(() => runDemo(), 100);
+  }
+
+  function renderResult(original, data) {
+    document.getElementById('demo-loading').style.display = 'none';
+    document.getElementById('demo-btn').disabled = false;
+    const el = document.getElementById('demo-result');
+    if (!data.versions) { el.style.display = 'none'; return; }
+    el.innerHTML = `
+      <div class="demo-original">"${original}"</div>
+      ${data.versions.map(v => `
+        <div class="demo-ver">
+          <div class="demo-ver-label">
+            <span>${v.label}</span>
+            <button class="copy-btn" onclick="navigator.clipboard.writeText(this.dataset.text);this.textContent='Copied!';setTimeout(()=>this.textContent='Copy',2000)" data-text="${v.text.replace(/"/g,'&quot;')}">Copy</button>
+          </div>
+          <div class="demo-ver-text">${v.text}</div>
+          <div class="demo-ver-why">${v.why}</div>
+        </div>
+      `).join('')}
+      <div class="demo-cta">
+        <p>Want the full platform? Build your resume, get recruiter feedback, and see your market ranking.</p>
+        <a href="#pricing" class="btn-primary" style="display:inline-flex">🔥 Lock in $29 before it goes up →</a>
+      </div>
+    `;
+    el.style.display = 'block';
+  }
+
+  document.getElementById('demo-input').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runDemo(); }
+  });
+</script>
+</body>
+</html>

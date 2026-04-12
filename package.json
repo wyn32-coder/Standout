@@ -1,0 +1,12 @@
+{
+  "name": "standout",
+  "version": "1.0.0",
+  "description": "AI career platform — get the job, not just the resume",
+  "private": true,
+  "dependencies": {
+    "stripe": "^14.0.0"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}

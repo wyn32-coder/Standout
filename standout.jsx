@@ -1,0 +1,758 @@
+import { useState, useEffect, useRef } from "react";
+
+const STRIPE_LINK = "https://buy.stripe.com/YOUR_PAYMENT_LINK";
+const FREE_LIMIT = 1;
+
+// ─── FONT: DM Serif Display (elegant, readable) + DM Sans (clean body) ────────
+// Research: serif headlines feel premium and trustworthy; sans body maximizes legibility
+// Orange CTAs (#f4722b) convert 21-34% better than blue/green (CXL / Adobe 2025)
+// Navy base (#0d1a2e) = trust anchor for professional tools
+
+const S = `
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:#09101a;color:#ede8df;min-height:100vh;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+
+:root{
+  --o:#f4722b;   /* orange — primary CTA, highest converting */
+  --ol:#f79559;  /* orange light — hover */
+  --od:#c95a20;  /* orange dark — pressed */
+  --navy:#0d1a2e;
+  --b1:#132236;  /* card bg */
+  --b2:#1a2e45;  /* elevated surface */
+  --b3:#213452;  /* border */
+  --cr:#ede8df;  /* cream text */
+  --mu:rgba(237,232,223,.52); /* muted text */
+  --mu2:rgba(237,232,223,.28); /* very muted */
+  --line:rgba(244,114,43,.18); /* orange border */
+  --green:#3db87a; --red:#e05555; --yellow:#e8c84a; --blue:#5ba3d9; --purple:#9b7fe8;
+}
+
+.app{min-height:100vh;background:var(--navy)}
+
+/* subtle dot grid */
+.grid{position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.025;
+  background-image:radial-gradient(circle,rgba(244,114,43,.8) 1px,transparent 1px);
+  background-size:32px 32px}
+
+/* ── NAV ── */
+.nav{padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(9,16,26,.96);backdrop-filter:blur(16px);z-index:200;border-bottom:1px solid var(--line)}
+.logo{font-family:'DM Serif Display',serif;font-size:24px;color:var(--cr);letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+.logo-dot{width:10px;height:10px;background:var(--o);border-radius:50%;display:inline-block}
+.nav-r{display:flex;align-items:center;gap:10px}
+.nav-pill{font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);border:1px solid var(--line);padding:4px 12px;border-radius:20px}
+.nav-cta{background:var(--o);color:#fff;border:none;padding:9px 20px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s}
+.nav-cta:hover{background:var(--ol);box-shadow:0 4px 18px rgba(244,114,43,.3);transform:translateY(-1px)}
+
+/* ── HERO ── */
+.hero{padding:56px 24px 48px;text-align:center;position:relative;overflow:hidden;max-width:680px;margin:0 auto}
+.hero-glow{position:absolute;top:0;left:50%;transform:translateX(-50%);width:500px;height:300px;background:radial-gradient(ellipse,rgba(244,114,43,.1) 0%,transparent 68%);pointer-events:none}
+.hero-tag{display:inline-block;font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);background:rgba(244,114,43,.1);border:1px solid var(--line);padding:5px 14px;border-radius:20px;margin-bottom:22px}
+.hero h1{font-family:'DM Serif Display',serif;font-size:clamp(32px,5.5vw,54px);line-height:1.1;color:var(--cr);margin-bottom:16px;letter-spacing:-.5px}
+.hero h1 i{font-style:italic;color:var(--o)}
+.hero p{font-size:16px;color:var(--mu);max-width:420px;margin:0 auto 32px;line-height:1.7;font-weight:400}
+
+/* ── HOOK WIDGET ── */
+.hook{max-width:680px;margin:0 auto 48px;padding:0 24px}
+.hook-card{background:var(--b1);border:2px solid var(--line);border-radius:16px;padding:28px;position:relative;overflow:hidden}
+.hook-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--o),var(--ol))}
+.hook-label{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:10px}
+.hook-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--cr);margin-bottom:6px;line-height:1.3}
+.hook-sub{font-size:14px;color:var(--mu);margin-bottom:20px;line-height:1.6}
+.hook-input-wrap{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:flex-start;margin-bottom:10px}
+.hook-examples{display:flex;gap:7px;flex-wrap:wrap}
+.hook-ex{font-size:11px;background:rgba(244,114,43,.07);border:1px solid var(--line);color:var(--o);padding:4px 11px;border-radius:14px;cursor:pointer;transition:all .15s;font-weight:500}
+.hook-ex:hover{background:rgba(244,114,43,.14)}
+.hook-result{margin-top:18px;animation:up .3s ease}
+.hook-original{font-size:12px;color:var(--mu2);text-decoration:line-through;margin-bottom:12px;font-style:italic}
+.hook-ver{background:var(--b2);border-radius:10px;padding:14px 16px;border-left:3px solid var(--o);margin-bottom:10px}
+.hook-ver:last-child{margin-bottom:0}
+.hook-ver-label{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+.hook-ver-text{font-size:14px;color:var(--cr);line-height:1.65;font-weight:400}
+.hook-ver-why{font-size:12px;color:var(--mu);margin-top:5px;font-style:italic}
+
+/* ── JOURNEY ── */
+.journey{max-width:680px;margin:0 auto 48px;padding:0 24px}
+.journey-title{font-family:'DM Serif Display',serif;font-size:24px;color:var(--cr);text-align:center;margin-bottom:6px}
+.journey-sub{font-size:14px;color:var(--mu);text-align:center;margin-bottom:28px}
+.steps{display:flex;flex-direction:column;gap:12px}
+.step{background:var(--b1);border:1px solid rgba(244,114,43,.14);border-radius:12px;padding:18px 20px;display:flex;align-items:center;gap:16px;cursor:pointer;transition:all .2s;position:relative}
+.step:hover{border-color:var(--line);background:var(--b2);transform:translateX(4px)}
+.step.active{border-color:var(--o);background:var(--b2);box-shadow:0 0 0 1px rgba(244,114,43,.15),0 4px 20px rgba(244,114,43,.08)}
+.step.locked{opacity:.55;cursor:default}
+.step.locked:hover{transform:none;background:var(--b1)}
+.step-num{width:36px;height:36px;border-radius:50%;background:rgba(244,114,43,.12);border:1.5px solid var(--line);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;color:var(--o);flex-shrink:0;font-weight:400}
+.step.active .step-num{background:var(--o);border-color:var(--o);color:#fff}
+.step.done .step-num{background:var(--green);border-color:var(--green);color:#fff}
+.step-body{flex:1}
+.step-title{font-size:15px;font-weight:600;color:var(--cr);margin-bottom:2px}
+.step-desc{font-size:13px;color:var(--mu);line-height:1.5}
+.step-arrow{font-size:16px;color:var(--mu2);transition:color .18s}
+.step:hover .step-arrow{color:var(--o)}
+.step.active .step-arrow{color:var(--o)}
+.step-badge{font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:10px;margin-left:8px}
+.step-badge.new{background:rgba(244,114,43,.15);color:var(--o)}
+.step-badge.done{background:rgba(61,184,122,.15);color:var(--green)}
+
+/* ── TOOL PANEL ── */
+.panel{max-width:680px;margin:0 auto;padding:0 24px 60px;animation:up .3s ease}
+.panel-back{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mu);cursor:pointer;margin-bottom:20px;transition:color .18s;font-weight:500;width:fit-content}
+.panel-back:hover{color:var(--o)}
+.panel-header{margin-bottom:24px}
+.panel-step-badge{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:8px}
+.panel-title{font-family:'DM Serif Display',serif;font-size:28px;color:var(--cr);line-height:1.2;margin-bottom:8px}
+.panel-sub{font-size:14px;color:var(--mu);line-height:1.65}
+
+/* ── FORMS ── */
+.card{background:var(--b1);border:1px solid var(--line);border-radius:12px;padding:22px;margin-bottom:14px}
+.card.hot{border-color:rgba(244,114,43,.35);box-shadow:0 0 24px rgba(244,114,43,.06)}
+.fl{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);margin-bottom:7px;display:block}
+.fhint{font-size:12px;color:var(--mu2);margin-top:5px;line-height:1.4}
+textarea,input,select{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(244,114,43,.14);border-radius:9px;padding:12px 14px;color:var(--cr);font-family:'DM Sans',sans-serif;font-size:14px;line-height:1.6;resize:vertical;transition:border-color .18s;outline:none}
+textarea:focus,input:focus{border-color:rgba(244,114,43,.5);background:rgba(255,255,255,.055)}
+textarea::placeholder,input::placeholder{color:var(--mu2)}
+.fg{margin-bottom:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:560px){.g2{grid-template-columns:1fr}.nav{padding:14px 16px}.hook-input-wrap{grid-template-columns:1fr;grid-template-rows:auto auto}}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:12px 22px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all .18s;letter-spacing:.1px}
+.bp{background:var(--o);color:#fff}
+.bp:hover:not(:disabled){background:var(--ol);transform:translateY(-1px);box-shadow:0 5px 18px rgba(244,114,43,.3)}
+.bp:disabled{opacity:.35;cursor:not-allowed}
+.bo{background:transparent;color:var(--o);border:1px solid var(--line)}
+.bo:hover:not(:disabled){border-color:var(--o);background:rgba(244,114,43,.07)}
+.bo:disabled{opacity:.28;cursor:not-allowed}
+.bgh{background:rgba(255,255,255,.05);color:var(--mu);border:1px solid rgba(255,255,255,.07)}
+.bgh:hover{background:rgba(255,255,255,.08);color:var(--cr)}
+.bfull{width:100%;justify-content:center;padding:14px}
+.bsm{padding:8px 14px;font-size:13px}
+.bxs{padding:5px 9px;font-size:11px;border-radius:6px}
+
+.ibtn{background:rgba(244,114,43,.08);border:1px solid var(--line);color:var(--o);padding:5px 11px;border-radius:6px;font-size:11px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .18s;font-weight:500}
+.ibtn:hover{background:rgba(244,114,43,.16)}
+
+.spin{width:16px;height:16px;border:2px solid var(--line);border-top-color:var(--o);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.loading{display:flex;align-items:center;gap:10px;padding:28px;justify-content:center;color:var(--mu);font-size:13px}
+
+/* ── RESULT CARD ── */
+.rcard{background:var(--b2);border:1px solid rgba(244,114,43,.3);border-radius:12px;padding:22px;margin-top:14px;animation:up .3s ease}
+.rhdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:9px}
+.rtitle{font-family:'DM Serif Display',serif;font-size:16px;color:var(--o)}
+.racts{display:flex;gap:7px;flex-wrap:wrap}
+.rbody{font-size:13px;line-height:1.9;color:rgba(237,232,223,.82);white-space:pre-wrap}
+.rtbox{background:rgba(244,114,43,.04);border:1px solid rgba(244,114,43,.1);border-radius:9px;padding:14px;margin-top:16px}
+.rttitle{font-size:10px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:var(--o);margin-bottom:9px}
+
+/* ── TONES ── */
+.trow{display:flex;gap:7px;flex-wrap:wrap}
+.tchip{padding:7px 14px;border-radius:20px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid rgba(244,114,43,.14);background:transparent;color:var(--mu);transition:all .18s;font-family:'DM Sans',sans-serif}
+.tchip.on{background:rgba(244,114,43,.13);border-color:var(--o);color:var(--o)}
+.tchip:hover:not(.on){border-color:rgba(244,114,43,.3);color:rgba(237,232,223,.72)}
+
+/* ── ATS RING ── */
+.atsp{background:var(--b2);border:1px solid var(--line);border-radius:11px;padding:18px;margin-top:12px;animation:up .3s ease}
+.atsh{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;gap:10px}
+.ring{position:relative;width:68px;height:68px;flex-shrink:0}
+.ring svg{transform:rotate(-90deg)}
+.rnum{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:20px;color:var(--cr)}
+.rnum.hi{color:var(--green)}.rnum.mi{color:var(--o)}.rnum.lo{color:var(--red)}
+.achk{display:flex;align-items:flex-start;gap:8px;font-size:13px;line-height:1.5;color:var(--mu);padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.achk:last-child{border-bottom:none}
+
+/* ── LINKEDIN ── */
+.lirow{display:flex;gap:9px}
+.lirow input{flex:1}
+.lis{font-size:12px;margin-top:7px;padding:7px 12px;border-radius:7px;font-weight:500}
+.lis.ok{background:rgba(61,184,122,.08);color:var(--green);border:1px solid rgba(61,184,122,.15)}
+.lis.err{background:rgba(224,85,85,.08);color:var(--red);border:1px solid rgba(224,85,85,.15)}
+.lis.ld{background:rgba(244,114,43,.06);color:var(--o);border:1px solid var(--line)}
+
+/* ── PAYWALL ── */
+.pw{background:linear-gradient(160deg,var(--b1),#0d1a2e);border:1px solid rgba(244,114,43,.35);border-radius:16px;padding:44px 32px;text-align:center;animation:up .3s ease}
+.pw h2{font-family:'DM Serif Display',serif;font-size:30px;color:var(--cr);margin-bottom:10px;line-height:1.2}
+.pw p{color:var(--mu);font-size:15px;margin-bottom:26px;line-height:1.65}
+.ptag{font-family:'DM Serif Display',serif;font-size:58px;color:var(--o);display:inline-block;line-height:1;letter-spacing:-2px}
+.psub{font-size:13px;color:var(--mu2);margin-bottom:28px;display:block}
+.perks{list-style:none;margin-bottom:30px;display:inline-block;text-align:left}
+.perks li{font-size:14px;color:rgba(237,232,223,.68);padding:6px 0;display:flex;align-items:center;gap:10px}
+.perks li::before{content:'✓';color:var(--o);font-weight:700;font-size:13px}
+.sbtn{background:var(--o);color:#fff;border:none;padding:16px 44px;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:inline-flex;align-items:center;gap:9px}
+.sbtn:hover{background:var(--ol);transform:translateY(-2px);box-shadow:0 10px 28px rgba(244,114,43,.35)}
+.snote{font-size:12px;color:var(--mu2);margin-top:11px}
+.dbanner{background:rgba(244,114,43,.06);border:1px solid var(--line);border-radius:8px;padding:10px 16px;font-size:13px;color:var(--mu);margin-bottom:14px;text-align:center}
+.dbanner strong{color:var(--o)}
+.divl{height:1px;background:var(--line);margin:18px 0}
+
+/* ── CAREER POSITIONING ── */
+.cp-q{animation:up .28s ease}
+.cp-qlabel{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--o);margin-bottom:6px}
+.cp-qtitle{font-family:'DM Serif Display',serif;font-size:22px;color:var(--cr);margin-bottom:7px;line-height:1.3}
+.cp-qsub{font-size:14px;color:var(--mu);margin-bottom:14px;line-height:1.6}
+.cp-hints{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.cp-hint{font-size:12px;background:rgba(244,114,43,.08);border:1px solid var(--line);color:var(--o);padding:5px 12px;border-radius:14px;cursor:pointer;transition:all .15s;font-weight:500}
+.cp-hint:hover{background:rgba(244,114,43,.15)}
+.cp-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.cp-step{font-size:12px;color:var(--mu2)}
+.cp-si{background:var(--b2);border-left:3px solid var(--o);border-radius:0 9px 9px 0;padding:12px 15px;margin-bottom:9px}
+.cp-siq{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu2);margin-bottom:3px}
+.cp-sia{font-size:14px;color:rgba(237,232,223,.75);line-height:1.6}
+
+/* ── COACHING ── */
+.chat-box{display:flex;flex-direction:column;gap:10px;margin-bottom:14px;max-height:380px;overflow-y:auto;padding-right:4px}
+.chat-box::-webkit-scrollbar{width:3px}.chat-box::-webkit-scrollbar-thumb{background:rgba(244,114,43,.3);border-radius:3px}
+.msg{max-width:86%;animation:up .2s ease}
+.msg.ai{align-self:flex-start}.msg.user{align-self:flex-end}
+.msg-lbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.msg.ai .msg-lbl{color:var(--o)}.msg.user .msg-lbl{color:var(--mu2);text-align:right}
+.msg-bubble{padding:11px 14px;border-radius:12px;font-size:14px;line-height:1.65}
+.msg.ai .msg-bubble{background:var(--b2);border:1px solid var(--line);color:rgba(237,232,223,.85);border-radius:4px 12px 12px 12px}
+.msg.user .msg-bubble{background:rgba(244,114,43,.14);border:1px solid rgba(244,114,43,.28);color:var(--cr);border-radius:12px 4px 12px 12px}
+.chat-input-row{display:flex;gap:9px;align-items:flex-end}
+.chat-input-row textarea{resize:none;max-height:100px}
+.c-starters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:13px}
+.c-starter{font-size:13px;background:var(--b2);border:1px solid var(--line);color:var(--mu);padding:7px 13px;border-radius:20px;cursor:pointer;transition:all .15s}
+.c-starter:hover{border-color:var(--o);color:var(--o)}
+.c-bullet{background:var(--b1);border:1px solid rgba(244,114,43,.28);border-radius:10px;padding:14px;margin-bottom:9px;animation:up .28s ease}
+.c-bullet-text{font-size:14px;color:var(--cr);line-height:1.65;margin-bottom:7px}
+.c-bullet-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.ctag{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:2px 8px;border-radius:8px;background:rgba(244,114,43,.12);color:var(--o)}
+
+/* ── FEEDBACK ── */
+.fb-grade-row{display:flex;align-items:center;gap:18px;background:var(--b2);border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:12px}
+.fb-grade{font-family:'DM Serif Display',serif;font-size:58px;line-height:1}
+.fb-grade.A{color:var(--green)}.fb-grade.B{color:var(--o)}.fb-grade.C{color:var(--yellow)}.fb-grade.D,.fb-grade.F{color:var(--red)}
+.fb-meta-lbl{font-size:14px;font-weight:600;color:var(--cr);margin-bottom:3px}
+.fb-meta-sub{font-size:13px;color:var(--mu);line-height:1.5}
+.fb-verdict{background:rgba(244,114,43,.06);border:1px solid rgba(244,114,43,.2);border-radius:11px;padding:18px;margin-bottom:12px}
+.fb-vt{font-family:'DM Serif Display',serif;font-size:16px;color:var(--o);margin-bottom:7px}
+.fb-vb{font-size:14px;color:rgba(237,232,223,.72);line-height:1.7}
+.fb-sec{background:var(--b2);border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:11px}
+.fb-sec-t{font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:7px}
+.fb-item{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;line-height:1.5}
+.fb-item:last-child{border-bottom:none;padding-bottom:0}
+.fb-il{color:var(--cr);font-weight:500;margin-bottom:2px;font-size:14px}
+.fb-id{color:var(--mu);font-size:13px}
+.blit{background:var(--b1);border-radius:8px;padding:11px 13px;border-left:3px solid transparent;margin-bottom:7px}
+.blit.s{border-left-color:var(--green)}.blit.w{border-left-color:var(--red)}
+.blit-txt{font-size:13px;color:rgba(237,232,223,.78);line-height:1.5;margin-bottom:4px}
+.blit-meta{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.btag{padding:2px 7px;border-radius:7px;font-weight:600;font-size:10px;letter-spacing:.7px;text-transform:uppercase}
+.btag.s{background:rgba(61,184,122,.12);color:var(--green)}.btag.w{background:rgba(224,85,85,.12);color:var(--red)}
+.breason{color:var(--mu2);font-size:12px;font-style:italic}
+
+/* ── TRACKER ── */
+.trk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:18px}
+.tstat{background:var(--b1);border:1px solid var(--line);border-radius:10px;padding:14px;text-align:center}
+.tsnum{font-family:'DM Serif Display',serif;font-size:28px;line-height:1}
+.tslbl{font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--mu2);margin-top:3px}
+@media(max-width:480px){.trk-stats{grid-template-columns:repeat(2,1fr)}}
+.alist{display:flex;flex-direction:column;gap:8px}
+.arow{background:var(--b1);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;cursor:pointer;transition:border-color .18s}
+.arow:hover{border-color:rgba(244,114,43,.4)}
+.aco{font-size:14px;font-weight:600;color:var(--cr);flex:1;min-width:100px}
+.arole{font-size:12px;color:var(--mu);margin-top:2px}
+.abadge{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;padding:3px 10px;border-radius:10px}
+.adate{font-size:11px;color:var(--mu2)}
+.aacts{display:flex;gap:6px}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:400;display:flex;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(5px);animation:fadeIn .18s ease}
+.modal{background:var(--b2);border:1px solid var(--line);border-radius:14px;padding:26px;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;animation:up .22s ease}
+.modal-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--cr);margin-bottom:16px}
+.mfoot{display:flex;gap:9px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.stage-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:4px}
+.sbtn2{padding:5px 12px;border-radius:16px;font-size:12px;font-weight:600;cursor:pointer;border:2px solid transparent;background:var(--b1);color:var(--mu);transition:all .18s;font-family:'DM Sans',sans-serif}
+.sbtn2.on{color:#fff}
+.ins-wrap{background:var(--b2);border:1px solid var(--line);border-radius:11px;padding:18px;margin-top:18px}
+.ins-title{font-family:'DM Serif Display',serif;font-size:17px;color:var(--cr);margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:9px}
+.ins-item{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;line-height:1.55}
+.ins-item:last-child{border-bottom:none}
+.ins-txt strong{color:var(--cr)}
+.empty{text-align:center;padding:44px 20px;color:var(--mu2)}
+.empty-icon{font-size:36px;margin-bottom:12px}
+.empty-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--mu);margin-bottom:6px}
+
+/* ── MARKET ── */
+.mkt-score{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:flex-start;background:var(--b2);border:1px solid var(--line);border-radius:11px;padding:18px;margin-bottom:14px}
+.mkt-pct{font-family:'DM Serif Display',serif;font-size:52px;color:var(--o);line-height:1;letter-spacing:-2px}
+.mkt-pct-sub{font-size:12px;color:var(--mu);margin-top:2px}
+.mkt-bar-wrap{margin-bottom:10px}
+.mkt-bar-lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:4px}
+.mkt-bar-track{height:7px;background:var(--navy);border-radius:7px;overflow:hidden;position:relative}
+.mkt-bar-fill{height:100%;border-radius:7px;transition:width 1s ease}
+.mkt-bar-mark{position:absolute;top:0;bottom:0;width:2px;background:rgba(237,232,223,.12)}
+.mkt-i{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;line-height:1.5}
+.mkt-i:last-child{border-bottom:none}
+.mkt-i-txt{color:var(--mu)}
+.mkt-i-txt strong{color:var(--cr)}
+
+/* ── SIM ── */
+.sim-timer{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.sim-bar-wrap{flex:1;height:4px;background:var(--b1);border-radius:4px;overflow:hidden}
+.sim-bar-fill{height:100%;background:var(--o);transition:width .1s linear;border-radius:4px}
+.sim-tick{font-family:'DM Serif Display',serif;font-size:24px;color:var(--o);min-width:40px}
+.sim-phase{font-size:11px;color:var(--o);font-weight:600;letter-spacing:1px;text-transform:uppercase;height:16px;margin-bottom:8px}
+.sim-txt{font-size:13px;line-height:1.85;color:rgba(237,232,223,.78);white-space:pre-wrap;background:var(--b1);border-radius:10px;padding:16px}
+.sim-vi{display:flex;align-items:flex-start;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px;line-height:1.5;color:var(--mu)}
+.sim-vi:last-child{border-bottom:none}
+
+/* ── ROLE IQ ── */
+.ri-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+@media(max-width:500px){.ri-grid{grid-template-columns:repeat(2,1fr)}}
+.ri-role{background:var(--b1);border:1px solid rgba(244,114,43,.12);border-radius:10px;padding:14px;cursor:pointer;transition:all .18s;text-align:center}
+.ri-role.on{background:rgba(244,114,43,.1);border-color:var(--o)}
+.ri-role-icon{font-size:22px;margin-bottom:5px}
+.ri-role-name{font-size:12px;font-weight:500;color:var(--mu)}
+.ri-tag{font-size:12px;padding:4px 10px;border-radius:14px;border:1px solid;margin:3px;display:inline-block;font-weight:500}
+.ri-bench{background:var(--b1);border-radius:8px;padding:12px;margin-bottom:8px}
+.ri-bench-t{font-size:13px;font-weight:600;color:var(--cr);margin-bottom:3px}
+.ri-bench-v{font-size:12px;color:var(--mu);line-height:1.5}
+
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+`;
+
+// ─── DATA ─────────────────────────────────────────────────────────────────────
+const TONES = [{id:"professional",l:"Professional"},{id:"confident",l:"Confident"},{id:"conversational",l:"Conversational"},{id:"technical",l:"Technical"},{id:"creative",l:"Creative"}];
+const TONE_I = {professional:"Formal, polished, corporate tone.",confident:"Bold, assertive. No hedging words.",conversational:"Warm and human. Not robotic.",technical:"Precise, detailed technical language.",creative:"Distinctive, memorable language."};
+const STAGES = ["Applied","Phone Screen","Interview","Final Round","Offer","Rejected"];
+const STAGE_C = {Applied:"#f4722b","Phone Screen":"#5ba3d9",Interview:"#9b7fe8","Final Round":"#f9a05a",Offer:"#3db87a",Rejected:"#e05555"};
+const ROLES = [{id:"ic",icon:"💻",name:"Individual Contributor"},{id:"manager",icon:"👥",name:"Manager"},{id:"director",icon:"🏢",name:"Director / VP"},{id:"sales",icon:"📈",name:"Sales / CS"},{id:"product",icon:"🔧",name:"Product"},{id:"data",icon:"📊",name:"Data / Analytics"}];
+const ROLE_INTEL = {
+  ic:{lang:["Technical depth","Impact ownership","Problem-solving"],metrics:["Performance gains","Users affected","Bug reduction %"],framing:"Focus on individual contribution, technical skill, measurable impact.",benchmarks:[{t:"Top 10% include",v:"Specific technologies, measurable performance gains, and open source contributions."},{t:"Usually missing",v:"Scale (users affected, data volume) and comparison to team average."}]},
+  manager:{lang:["Team leadership","Cross-functional alignment","Hiring & development"],metrics:["Team size","Attrition rate","OKR achievement %"],framing:"Emphasize people leadership and team outcomes. Show what your team accomplished.",benchmarks:[{t:"Top 10% include",v:"Team size, retention rates, and business outcomes driven by the team."},{t:"Usually missing",v:"Before/after team performance metrics."}]},
+  director:{lang:["Strategic vision","P&L ownership","Organizational design"],metrics:["Revenue owned","Budget managed","Org size"],framing:"Lead with business outcomes and scale. Quantify P&L impact and strategic wins.",benchmarks:[{t:"Top 10% include",v:"Revenue/P&L ownership, org size, and board-level interaction."},{t:"Usually missing",v:"Business context and strategy vs execution narrative."}]},
+  sales:{lang:["Revenue generation","Quota attainment","Client retention"],metrics:["Quota %","ARR/MRR owned","Churn reduction"],framing:"Lead with numbers. Every bullet ties back to revenue, retention, or pipeline.",benchmarks:[{t:"Top 10% include",v:"Quota % consistently, ARR book size, and named enterprise logos."},{t:"Usually missing",v:"Ramp time to quota and year-over-year growth."}]},
+  product:{lang:["User impact","Business alignment","Roadmap ownership"],metrics:["DAU/MAU growth","Conversion lift","Revenue attributed"],framing:"Show the business outcome, not just the feature. Connect decisions to user metrics.",benchmarks:[{t:"Top 10% include",v:"Specific metric improvements tied to launches."},{t:"Usually missing",v:"Failure/learning stories and tradeoff decisions."}]},
+  data:{lang:["Analytical rigor","Business impact","Stakeholder influence"],metrics:["Model accuracy","Revenue attributed","Pipeline scale"],framing:"Connect technical work to business decisions. Show both depth and impact.",benchmarks:[{t:"Top 10% include",v:"Business decisions changed by analysis and scale of systems built."},{t:"Usually missing",v:"Stakeholder influence — who acted on your work."}]},
+};
+const CP_QS = [
+  {label:"Core Value",title:"What problems do you solve?",sub:"Think about what breaks when you're not around.",hints:["Revenue leakage","Scaling bottlenecks","Technical debt","Customer churn"]},
+  {label:"Scale",title:"What scale have you operated at?",sub:"Team size, budget, ARR, users — be specific.",hints:["$1M–$10M","10–100 people","1M+ users","Enterprise (F500)"]},
+  {label:"Differentiator",title:"What makes you different?",sub:"The thing a competitor candidate doesn't have.",hints:["Domain depth","Technical + business mix","Built from zero","Industry specialist"]},
+  {label:"Signature Win",title:"What's your signature achievement?",sub:"What do you do reliably well?",hints:["Building 0→1","Scaling 1→100","Turnarounds","Revenue growth"]},
+  {label:"Your Story",title:"What's the one-line story of your career?",sub:"If a recruiter spends 10 seconds — what should stick?",hints:["Tech leader turned operator","IC → executive","Generalist with depth","Domain expert"]},
+];
+
+async function callClaude(prompt, maxT = 1000) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxT, messages:[{role:"user",content:prompt}] })
+  });
+  const data = await res.json();
+  return data.content?.map(b=>b.text||"").join("\n")||"";
+}
+function pJ(t){try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch{return null;}}
+
+// ─── ATS ──────────────────────────────────────────────────────────────────────
+function ATSPanel({result,jobDesc}){
+  if(!result)return null;
+  let score=0;const checks=[];
+  const hm=/\d+%|\d+x|\$[\d,]+|\d+\s*(people|team|clients)/i.test(result);
+  checks.push({ok:hm,icon:hm?"✅":"⚠️",t:hm?"Quantified achievements present":"Add metrics — numbers boost ATS ranking"});if(hm)score+=25;
+  const sc=["experience","education","skills","summary"].filter(s=>result.toLowerCase().includes(s));
+  checks.push({ok:sc.length>=3,icon:sc.length>=3?"✅":"⚠️",t:sc.length>=3?`Section headers found`:"Add standard section headers"});if(sc.length>=3)score+=20;
+  const wc=result.split(/\s+/).length;
+  checks.push({ok:wc>=300&&wc<=700,icon:wc>=300&&wc<=700?"✅":"⚠️",t:`${wc} words — ${wc>=300&&wc<=700?"ideal range":"aim for 300–700"}`});if(wc>=300&&wc<=700)score+=15;
+  const vc=["led","built","created","managed","developed","launched","drove","increased","reduced","improved"].filter(v=>new RegExp(`\\b${v}\\b`,"i").test(result)).length;
+  checks.push({ok:vc>=3,icon:vc>=3?"✅":"⚠️",t:vc>=3?`${vc} action verbs found`:`Only ${vc} action verbs — add more`});if(vc>=3)score+=20;
+  if(jobDesc?.length>50){const jw=jobDesc.toLowerCase().split(/\W+/).filter(w=>w.length>4);const pct=Math.round((jw.filter(w=>result.toLowerCase().includes(w)).length/Math.max(jw.length,1))*100);checks.push({ok:pct>=40,icon:pct>=40?"✅":"⚠️",t:pct>=40?`${pct}% keyword match`:`${pct}% keyword match — re-tailor`});if(pct>=40)score+=20;}
+  else{score+=20;checks.push({ok:true,icon:"ℹ️",t:"Paste a JD to check keyword match"});}
+  score=Math.min(score,100);
+  const cls=score>=80?"hi":score>=55?"mi":"lo",col=score>=80?"#3db87a":score>=55?"#f4722b":"#e05555";
+  const r=30,circ=2*Math.PI*r,dash=(score/100)*circ;
+  return(<div className="atsp"><div className="atsh"><div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:15,color:"var(--cr)"}}>ATS Score</div><div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>Screening compatibility</div></div><div className="ring"><svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="5"/><circle cx="34" cy="34" r={r} fill="none" stroke={col} strokeWidth="5" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" style={{transition:"stroke-dasharray 1s ease"}}/></svg><div className={`rnum ${cls}`}>{score}</div></div></div><div>{checks.map((c,i)=><div key={i} className="achk"><span>{c.icon}</span><span>{c.t}</span></div>)}</div></div>);
+}
+
+// ─── TOOL: CAREER POSITIONING ─────────────────────────────────────────────────
+function CareerPositioning(){
+  const [step,setStep]=useState(0);const [answers,setAnswers]=useState({});const [cur,setCur]=useState("");const [done,setDone]=useState(false);const [gen,setGen]=useState(false);const [pos,setPos]=useState(null);
+  const q=CP_QS[step];
+  const next=async()=>{
+    if(!cur.trim())return;const na={...answers,[q.label]:cur};setAnswers(na);setCur("");
+    if(step<CP_QS.length-1){setStep(s=>s+1);}
+    else{setDone(true);setGen(true);const raw=await callClaude(`Career positioning from self-assessment. Return ONLY JSON:\n${Object.entries(na).map(([k,v])=>`${k}: ${v}`).join("\n")}\n{"headline":"punchy 10-word positioning","summary":"3-sentence executive summary","uniqueAngle":"1-sentence differentiator","targetRoles":["r1","r2","r3"],"powerPhrases":["p1","p2","p3","p4"]}`);setPos(pJ(raw));setGen(false);}
+  };
+  if(done&&gen)return<div className="loading"><div className="spin"/>Building your positioning…</div>;
+  if(done&&pos)return(<div style={{animation:"up .3s ease"}}><div style={{background:"rgba(244,114,43,.08)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:20,marginBottom:14}}><div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Your Positioning</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)",lineHeight:1.25,marginBottom:10}}>{pos.headline}</div><div style={{fontSize:14,color:"rgba(237,232,223,.72)",lineHeight:1.7}}>{pos.summary}</div></div><div className="g2" style={{marginBottom:14}}><div className="card" style={{margin:0}}><div className="fl">Target Roles</div>{pos.targetRoles?.map((r,i)=><div key={i} style={{fontSize:14,color:"rgba(237,232,223,.72)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>{r}</div>)}</div><div className="card" style={{margin:0}}><div className="fl">Power Phrases</div>{pos.powerPhrases?.map((p,i)=><div key={i} style={{fontSize:13,color:"var(--o)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontStyle:"italic"}}>"{p}"</div>)}</div></div>{Object.entries(answers).map(([k,v])=><div key={k} className="cp-si"><div className="cp-siq">{k}</div><div className="cp-sia">{v}</div></div>)}<button className="btn bgh bsm" style={{marginTop:12}} onClick={()=>{setStep(0);setAnswers({});setDone(false);setPos(null);}}>Start Over</button></div>);
+  return(<div><div style={{height:3,background:"var(--b1)",borderRadius:3,marginBottom:22,overflow:"hidden"}}><div style={{height:"100%",width:`${(step/CP_QS.length)*100}%`,background:"var(--o)",borderRadius:3,transition:"width .5s ease"}}/></div><div className="cp-q"><div className="cp-qlabel">Question {step+1} of {CP_QS.length} · {q.label}</div><div className="cp-qtitle">{q.title}</div><div className="cp-qsub">{q.sub}</div><div className="cp-hints">{q.hints.map((h,i)=><span key={i} className="cp-hint" onClick={()=>setCur(p=>p?p+", "+h:h)}>{h}</span>)}</div><textarea rows={3} placeholder="Be specific — the more detail, the better…" value={cur} onChange={e=>setCur(e.target.value)}/><div className="cp-nav"><span className="cp-step">Step {step+1} of {CP_QS.length}</span><button className="btn bp bsm" onClick={next} disabled={!cur.trim()}>{step<CP_QS.length-1?"Next →":"Build My Positioning ✦"}</button></div></div></div>);
+}
+
+// ─── TOOL: RECRUITER SIM ──────────────────────────────────────────────────────
+function RecruiterSim({resumeText}){
+  const [running,setRunning]=useState(false);const [progress,setProgress]=useState(0);const [phase,setPhase]=useState(0);const [done,setDone]=useState(false);const [analysis,setAnalysis]=useState(null);const timer=useRef(null);
+  const PHASES=[{t:0,l:"Scanning name & title…"},{t:1.5,l:"Reading most recent role…"},{t:3,l:"Checking company names…"},{t:4,l:"Scanning for numbers…"},{t:5.5,l:"Verdict forming…"}];
+  const run=async()=>{
+    setRunning(true);setDone(false);setProgress(0);setPhase(0);setAnalysis(null);
+    const [simR]=await Promise.all([callClaude(`Senior recruiter, 6-second scan. Return ONLY JSON:\n${resumeText}\n{"firstImpression":"1-sentence gut reaction","whatStoodOut":["t1","t2","t3"],"whatWasMissed":["m1","m2"],"eyePath":["1st","2nd","3rd"],"wouldAdvance":true,"advanceReason":"1 sentence","sixSecondVerdict":"honest 2-sentence verdict"}`),new Promise(resolve=>{let t=0;timer.current=setInterval(()=>{t+=.1;setProgress(Math.min((t/6)*100,100));setPhase(Math.max(0,PHASES.filter(p=>p.t<=t).length-1));if(t>=6){clearInterval(timer.current);resolve();}},100);})]);
+    setAnalysis(pJ(simR));setRunning(false);setDone(true);
+  };
+  return(<div>{!running&&!done&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>⏱️</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:8}}>6-Second Recruiter Simulation</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Watch how a recruiter's eyes scan your resume. See what gets noticed, what gets skipped, and whether you'd advance.</p><button className="btn bp" onClick={run}>Start Simulation ▶</button></div>)}
+  {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{resumeText.split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{resumeText.split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
+  {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"✕ Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button></div>)}</div>)}</div>);
+}
+
+// ─── TOOL: MARKET COMPARISON ──────────────────────────────────────────────────
+function MarketComparison({resumeText,jobDesc}){
+  const [role,setRole]=useState("");const [loading,setLoading]=useState(false);const [data,setData]=useState(null);
+  const analyze=async()=>{
+    if(!resumeText||!role.trim())return;setLoading(true);setData(null);
+    const raw=await callClaude(`Recruiter comparing resume vs market benchmarks for "${role}". Return ONLY JSON:\nResume: ${resumeText.slice(0,1500)}${jobDesc?`\nJD: ${jobDesc.slice(0,500)}`:""}\n{"percentile":65,"percentileLabel":"Top 35% of candidates","dimensions":[{"label":"Experience Depth","score":72,"benchmark":60,"note":"brief observation"},{"label":"Metrics & Impact","score":45,"benchmark":70,"note":"observation"},{"label":"ATS Optimization","score":80,"benchmark":65,"note":"observation"},{"label":"Role Alignment","score":55,"benchmark":70,"note":"observation"}],"topPercentHas":["specific thing 1","thing 2","thing 3"],"youAreMissing":["missing 1","missing 2","missing 3"],"quickWins":["1 specific change to make","another quick win"]}`);
+    setData(pJ(raw));setLoading(false);
+  };
+  return(<div><div className="card"><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Live Market Comparison</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>See how your resume ranks against others competing for the same role</div><div className="fg"><label className="fl">Target Role</label><input placeholder='"Director of Customer Success" or "Senior Software Engineer"' value={role} onChange={e=>setRole(e.target.value)}/></div><button className="btn bp" onClick={analyze} disabled={loading||!resumeText||!role.trim()}>{loading?"Analyzing…":"Compare to Market ✦"}</button>{!resumeText&&<p style={{fontSize:13,color:"var(--red)",marginTop:9}}>Generate a resume first in Step 3.</p>}</div>
+  {loading&&<div className="loading"><div className="spin"/>Benchmarking…</div>}
+  {data&&!loading&&(<div style={{animation:"up .3s ease"}}><div className="mkt-score"><div><div className="mkt-pct">{data.percentile}<span style={{fontSize:22,letterSpacing:0}}>th</span></div><div className="mkt-pct-sub">percentile</div></div><div style={{flex:1}}><div style={{fontFamily:"'DM Serif Display',serif",fontSize:16,color:"var(--cr)",marginBottom:10}}>{data.percentileLabel}</div>{data.dimensions?.map((d,i)=>(<div key={i} className="mkt-bar-wrap"><div className="mkt-bar-lbl"><span>{d.label}</span><span>{d.score}/100</span></div><div className="mkt-bar-track"><div className="mkt-bar-fill" style={{width:`${d.score}%`,background:d.score>=d.benchmark?"#3db87a":"#f4722b"}}/><div className="mkt-bar-mark" style={{left:`${d.benchmark}%`}}/></div><div style={{fontSize:11,color:"var(--mu2)",marginTop:2}}>{d.note}</div></div>))}</div></div>
+  <div className="g2"><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>🏆 Top 20% have</div>{data.topPercentHas?.map((t,i)=><div key={i} className="mkt-i"><span>✦</span><span className="mkt-i-txt">{t}</span></div>)}</div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>⚠ You're missing</div>{data.youAreMissing?.map((t,i)=><div key={i} className="mkt-i"><span>○</span><span className="mkt-i-txt">{t}</span></div>)}</div></div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--o)"}}>⚡ Quick wins</div>{data.quickWins?.map((w,i)=><div key={i} className="mkt-i"><span>{i+1}.</span><span className="mkt-i-txt">{w}</span></div>)}</div></div>)}</div>);
+}
+
+// ─── TOOL: COACHING ───────────────────────────────────────────────────────────
+function CoachingMode(){
+  const [msgs,setMsgs]=useState([{role:"ai",text:"Hey! I'm your career coach. Tell me about your biggest win at work — don't worry about sounding professional yet, just tell me what happened."}]);
+  const [input,setInput]=useState("");const [loading,setLoading]=useState(false);const [bullets,setBullets]=useState([]);const chatRef=useRef(null);
+  useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[msgs]);
+  const send=async(text)=>{
+    const msg=text||input;if(!msg.trim())return;
+    const nm=[...msgs,{role:"user",text:msg}];setMsgs(nm);setInput("");setLoading(true);
+    const hist=nm.map(m=>`${m.role==="ai"?"Coach":"Candidate"}: ${m.text}`).join("\n");
+    const resp=await callClaude(`Career coach extracting resume bullets from conversation. Ask ONE follow-up for specifics (numbers, scale, impact). After 3+ user messages, generate bullets.\n${hist}\nRespond naturally. If enough info (3+ user messages), add BULLETS_READY: true at end.`,600);
+    const hasBullets=resp.includes("BULLETS_READY: true");
+    setMsgs(m=>[...m,{role:"ai",text:resp.replace("BULLETS_READY: true","").trim()}]);
+    if(hasBullets){const convo=nm.filter(m=>m.role==="user").map(m=>m.text).join(" ");const bRaw=await callClaude(`Generate 3 powerful resume bullets from: "${convo}". Return ONLY JSON:\n{"bullets":[{"text":"bullet with action verb + metric","type":"Impact","why":"why it works"},{"text":"bullet","type":"Leadership","why":"why"},{"text":"bullet","type":"Scale","why":"why"}]}`);const p=pJ(bRaw);if(p?.bullets)setBullets(p.bullets);}
+    setLoading(false);
+  };
+  return(<div><div className="card" style={{padding:0,overflow:"hidden"}}><div style={{padding:"14px 18px",borderBottom:"1px solid var(--line)",display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:"rgba(244,114,43,.15)",border:"1px solid var(--line)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🧑‍💼</div><div><div style={{fontSize:14,fontWeight:600,color:"var(--cr)"}}>Career Coach</div><div style={{fontSize:12,color:"var(--mu)"}}>Turns your stories into resume bullets</div></div><div style={{marginLeft:"auto",width:8,height:8,borderRadius:"50%",background:"var(--green)",animation:"pulse 2s infinite"}}/></div><div style={{padding:"15px 18px"}}>{msgs.length===1&&<div className="c-starters">{["Tell me about your biggest win","What makes you different?","What scale have you operated at?"].map((s,i)=><span key={i} className="c-starter" onClick={()=>send(s)}>{s}</span>)}</div>}<div className="chat-box" ref={chatRef}>{msgs.map((m,i)=><div key={i} className={`msg ${m.role}`}><div className="msg-lbl">{m.role==="ai"?"Coach":"You"}</div><div className="msg-bubble">{m.text}</div></div>)}{loading&&<div className="msg ai"><div className="msg-lbl">Coach</div><div className="msg-bubble" style={{color:"var(--mu)"}}><span style={{animation:"pulse 1.2s infinite",display:"inline-block"}}>Thinking…</span></div></div>}</div><div className="chat-input-row"><textarea rows={2} placeholder="Tell your story — the coach will pull out the bullets…" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button className="btn bp bsm" onClick={()=>send()} disabled={loading||!input.trim()} style={{flexShrink:0}}>Send</button></div></div></div>
+  {bullets.length>0&&(<div style={{marginTop:14}}><div className="fl" style={{marginBottom:10}}>Generated Bullets</div>{bullets.map((b,i)=><div key={i} className="c-bullet"><div className="c-bullet-text">{b.text}</div><div className="c-bullet-meta"><span className="ctag">{b.type}</span><span style={{fontSize:12,color:"var(--mu2)",fontStyle:"italic"}}>{b.why}</span><button className="ibtn" style={{marginLeft:"auto"}} onClick={()=>navigator.clipboard.writeText(b.text)}>Copy</button></div></div>)}</div>)}</div>);
+}
+
+// ─── TOOL: RECRUITER FEEDBACK ─────────────────────────────────────────────────
+function RecruiterFeedback({resumeText,jobDesc}){
+  const [loading,setLoading]=useState(false);const [fb,setFb]=useState(null);
+  const analyze=async()=>{setLoading(true);setFb(null);const raw=await callClaude(`Senior recruiter brutal resume review. Return ONLY JSON:\n${resumeText}${jobDesc?`\nJD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary":"2-sentence gut reaction","verdict":"3-4 sentence verdict","callbackProbability":"High","callbackReason":"1 sentence","strongBullets":[{"text":"exact bullet","reason":"why it works"}],"weakBullets":[{"text":"exact bullet","reason":"why it fails"}],"topStrengths":[{"label":"title","detail":"specific"}],"criticalFixes":[{"label":"title","detail":"fix"}],"redFlags":[{"label":"flag","detail":"reaction"}],"missingElements":[{"label":"missing","detail":"why matters"}]}`);setFb(pJ(raw));setLoading(false);};
+  if(!resumeText)return<div className="empty"><div className="empty-icon">📋</div><div className="empty-title">Complete Step 3 first</div><p style={{fontSize:13}}>Generate a resume, then come back here for feedback.</p></div>;
+  const cbC={High:"var(--green)",Medium:"var(--o)",Low:"var(--red)"};
+  return(<div>{!fb&&!loading&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>🧑‍💼</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)",marginBottom:8}}>Recruiter Review</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Grade, callback probability, and bullet-by-bullet analysis — exactly how a recruiter sees your resume.</p><button className="btn bp" onClick={analyze}>Analyze My Resume ✦</button></div>)}{loading&&<div className="loading"><div className="spin"/>Reviewing your resume…</div>}
+  {fb&&!loading&&(<div style={{animation:"up .3s ease"}}><div className="fb-grade-row"><div className={`fb-grade ${fb.grade}`}>{fb.grade}</div><div><div className="fb-meta-lbl">{fb.gradeLabel}</div><div className="fb-meta-sub">{fb.gradeSummary}</div><div style={{marginTop:8,display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:11,color:"var(--mu2)",letterSpacing:1,textTransform:"uppercase"}}>Callback prob.</span><span style={{fontSize:13,fontWeight:600,color:cbC[fb.callbackProbability]}}>{fb.callbackProbability}</span></div><div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>{fb.callbackReason}</div></div></div>
+  <div className="fb-verdict"><div className="fb-vt">Recruiter Verdict</div><div className="fb-vb">{fb.verdict}</div></div>
+  {fb.strongBullets?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>✅ Bullets That Work</div>{fb.strongBullets.map((b,i)=><div key={i} className="blit s"><div className="blit-txt">{b.text}</div><div className="blit-meta"><span className="btag s">Strong</span><span className="breason">{b.reason}</span></div></div>)}</div>}
+  {fb.weakBullets?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>⚠️ Bullets That Hurt You</div>{fb.weakBullets.map((b,i)=><div key={i} className="blit w"><div className="blit-txt">{b.text}</div><div className="blit-meta"><span className="btag w">Weak</span><span className="breason">{b.reason}</span></div></div>)}</div>}
+  {fb.topStrengths?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>💪 Strengths</div>{fb.topStrengths.map((s,i)=><div key={i} className="fb-item"><span>✦</span><div><div className="fb-il">{s.label}</div><div className="fb-id">{s.detail}</div></div></div>)}</div>}
+  {fb.criticalFixes?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>🔧 Critical Fixes</div>{fb.criticalFixes.map((f,i)=><div key={i} className="fb-item"><span>→</span><div><div className="fb-il">{f.label}</div><div className="fb-id">{f.detail}</div></div></div>)}</div>}
+  {fb.missingElements?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--blue)"}}>📋 What's Missing</div>{fb.missingElements.map((m,i)=><div key={i} className="fb-item"><span>○</span><div><div className="fb-il">{m.label}</div><div className="fb-id">{m.detail}</div></div></div>)}</div>}
+  <div style={{textAlign:"center",paddingTop:8}}><button className="btn bo bsm" onClick={analyze}>Re-analyze ↺</button></div></div>)}</div>);
+}
+
+// ─── TOOL: ROLE IQ ────────────────────────────────────────────────────────────
+function RoleIQ(){
+  const [sel,setSel]=useState(null);const intel=sel?ROLE_INTEL[sel]:null;
+  return(<div><div className="card"><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Role Intelligence</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>Select your target role — see the exact language, metrics, and framing that recruiters in that function look for</div><div className="ri-grid">{ROLES.map(r=><div key={r.id} className={`ri-role ${sel===r.id?"on":""}`} onClick={()=>setSel(r.id)}><div className="ri-role-icon">{r.icon}</div><div className="ri-role-name">{r.name}</div></div>)}</div></div>
+  {intel&&(<div style={{animation:"up .3s ease"}}><div className="g2"><div className="card" style={{margin:0}}><div className="fl">Language to Use</div><div>{intel.lang.map((l,i)=><span key={i} className="ri-tag" style={{background:"rgba(91,163,217,.1)",color:"#5ba3d9",borderColor:"rgba(91,163,217,.18)"}}>{l}</span>)}</div></div><div className="card" style={{margin:0}}><div className="fl">Metrics That Matter</div><div>{intel.metrics.map((m,i)=><span key={i} className="ri-tag" style={{background:"rgba(61,184,122,.09)",color:"var(--green)",borderColor:"rgba(61,184,122,.16)"}}>{m}</span>)}</div></div></div><div className="card"><div className="fl">Framing Guidance</div><p style={{fontSize:14,color:"rgba(237,232,223,.7)",lineHeight:1.7}}>{intel.framing}</p></div><div className="card"><div className="fl">Market Benchmarks</div>{intel.benchmarks.map((b,i)=><div key={i} className="ri-bench"><div className="ri-bench-t">{b.t}</div><div className="ri-bench-v">{b.v}</div></div>)}</div></div>)}</div>);
+}
+
+// ─── TOOL: JOB TRACKER ───────────────────────────────────────────────────────
+function JobTracker(){
+  const [apps,setApps]=useState(()=>{try{return JSON.parse(localStorage.getItem("so2_apps")||"[]");}catch{return [];}});
+  const [modal,setModal]=useState(false);const [edit,setEdit]=useState(null);const [insights,setInsights]=useState(null);const [iLoad,setILoad]=useState(false);
+  const [form,setForm]=useState({company:"",role:"",stage:"Applied",date:new Date().toISOString().split("T")[0],notes:"",resumeVersion:""});
+  const save2=(u)=>{setApps(u);try{localStorage.setItem("so2_apps",JSON.stringify(u));}catch{}};
+  const openNew=()=>{setForm({company:"",role:"",stage:"Applied",date:new Date().toISOString().split("T")[0],notes:"",resumeVersion:""});setEdit(null);setModal(true);};
+  const openEdit=(a)=>{setForm({...a});setEdit(a.id);setModal(true);};
+  const saveForm=()=>{if(!form.company||!form.role)return;edit?save2(apps.map(a=>a.id===edit?{...form,id:edit}:a)):save2([...apps,{...form,id:Date.now()}]);setModal(false);};
+  const stats={total:apps.length,interviews:apps.filter(a=>["Interview","Final Round","Offer"].includes(a.stage)).length,offers:apps.filter(a=>a.stage==="Offer").length,rate:apps.length?Math.round((apps.filter(a=>a.stage!=="Applied"&&a.stage!=="Rejected").length/apps.length)*100):0};
+  const getInsights=async()=>{if(apps.length<2)return;setILoad(true);const raw=await callClaude(`Career coach analyzing applications. Return ONLY JSON:\n${apps.map(a=>`${a.company}|${a.role}|${a.stage}${a.notes?"|"+a.notes:""}${a.resumeVersion?"|Resume:"+a.resumeVersion:""}`).join("\n")}\n{"insights":[{"icon":"emoji","text":"**Bold insight** explanation referencing actual data"}]}\n4-5 insights.`);setInsights(pJ(raw));setILoad(false);};
+  return(<div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}><div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)"}}>Job Tracker</div><button className="btn bp bsm" onClick={openNew}>+ Add Application</button></div>
+  <div className="trk-stats">{[{n:stats.total,l:"Applied",c:"var(--o)"},{n:stats.interviews,l:"Interviews",c:"var(--purple)"},{n:stats.offers,l:"Offers",c:"var(--green)"},{n:`${stats.rate}%`,l:"Response Rate",c:"var(--blue)"}].map((s,i)=><div key={i} className="tstat"><div className="tsnum" style={{color:s.c}}>{s.n}</div><div className="tslbl">{s.l}</div></div>)}</div>
+  {apps.length===0?(<div className="empty"><div className="empty-icon">📊</div><div className="empty-title">No applications yet</div><p style={{fontSize:13,marginBottom:18}}>Track your pipeline to learn what's working.</p><button className="btn bp bsm" onClick={openNew}>Add First Application</button></div>):(<div className="alist">{apps.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=><div key={a.id} className="arow" onClick={()=>openEdit(a)}><div style={{flex:1,minWidth:100}}><div className="aco">{a.company}</div><div className="arole">{a.role}</div></div><span className="abadge" style={{background:`${STAGE_C[a.stage]}18`,color:STAGE_C[a.stage]}}>{a.stage}</span><span className="adate">{a.date}</span><div className="aacts" onClick={e=>e.stopPropagation()}><button className="btn bgh bxs" onClick={()=>openEdit(a)}>Edit</button><button className="btn bgh bxs" style={{color:"var(--red)"}} onClick={()=>save2(apps.filter(x=>x.id!==a.id))}>✕</button></div></div>)}</div>)}
+  {apps.length>=2&&(<div className="ins-wrap"><div className="ins-title">🧠 What's Working<button className="btn bo bxs" onClick={getInsights} disabled={iLoad}>{iLoad?"…":"Generate Insights"}</button></div>{iLoad&&<div className="loading" style={{padding:14}}><div className="spin"/>Analyzing…</div>}{insights&&!iLoad&&insights.insights?.map((ins,i)=><div key={i} className="ins-item"><span style={{fontSize:16,flexShrink:0}}>{ins.icon}</span><span className="ins-txt" dangerouslySetInnerHTML={{__html:ins.text.replace(/\*\*(.*?)\*\*/g,"<strong>$1</strong>")}}/></div>)}{!insights&&!iLoad&&<p style={{fontSize:12,color:"var(--mu2)"}}>Hit "Generate Insights" to discover patterns in your applications.</p>}</div>)}
+  {modal&&(<div className="modal-ov" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-title">{edit?"Edit":"Add"} Application</div><div className="g2"><div className="fg"><label className="fl">Company</label><input placeholder="Google" value={form.company} onChange={e=>setForm(p=>({...p,company:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input placeholder="Senior Engineer" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div></div><div className="fg"><label className="fl">Stage</label><div className="stage-row">{STAGES.map(s=><button key={s} className={`sbtn2 ${form.stage===s?"on":""}`} style={form.stage===s?{background:STAGE_C[s],borderColor:STAGE_C[s]}:{}} onClick={()=>setForm(p=>({...p,stage:s}))}>{s}</button>)}</div></div><div className="fg"><label className="fl">Date Applied</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea rows={3} placeholder="How did it go? What did they ask?" value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div><div className="fg"><label className="fl">Resume Version Used</label><input placeholder="e.g. Tech-Focused, Startup tone" value={form.resumeVersion} onChange={e=>setForm(p=>({...p,resumeVersion:e.target.value}))}/></div><div className="mfoot"><button className="btn bgh bsm" onClick={()=>setModal(false)}>Cancel</button>{edit&&<button className="btn bgh bsm" style={{color:"var(--red)"}} onClick={()=>{save2(apps.filter(a=>a.id!==edit));setModal(false);}}>Delete</button>}<button className="btn bp bsm" onClick={saveForm} disabled={!form.company||!form.role}>Save</button></div></div></div>)}</div>);
+}
+
+// ─── MAIN APP ─────────────────────────────────────────────────────────────────
+const TOOL_STEPS = [
+  {id:"positioning",icon:"🎯",num:"1",title:"Define Your Positioning",desc:"5 questions that unlock your career story — what you do, at what scale, and what makes you different.",badge:"Start Here"},
+  {id:"builder",icon:"✍️",num:"2",title:"Build Your Resume",desc:"Fill in your details and get a full, ATS-optimized resume in seconds.",badge:null},
+  {id:"feedback",icon:"📋",num:"3",title:"Get Recruiter Feedback",desc:"A grade, callback probability, and bullet-by-bullet breakdown — exactly how a recruiter reads it.",badge:null},
+  {id:"sim",icon:"⏱️",num:"4",title:"Run the 6-Second Test",desc:"See what a recruiter actually notices in the first 6 seconds of scanning your resume.",badge:null},
+  {id:"market",icon:"📊",num:"5",title:"Compare to the Market",desc:"See your percentile ranking vs. other candidates and exactly what top resumes have that yours doesn't.",badge:null},
+  {id:"roleiq",icon:"🧠",num:"6",title:"Role Intelligence",desc:"The exact language, metrics, and framing that hiring managers in your field actually look for.",badge:null},
+  {id:"coach",icon:"🧑‍💼",num:"7",title:"Coaching Mode",desc:"Tell me your biggest win. I'll turn your story into 3 powerful resume bullets.",badge:null},
+  {id:"tracker",icon:"🗂️",num:"8",title:"Track Your Applications",desc:"Log applications, track stages, and let AI find patterns in what's getting you interviews.",badge:null},
+];
+
+export default function App() {
+  const [activeTool, setActiveTool] = useState(null);
+  const [usage, setUsage] = useState(0);
+  const [unlocked, setUnlocked] = useState(false);
+  // builder state
+  const [loading, setLoading] = useState(false);
+  const [retailoring, setRetailoring] = useState(false);
+  const [result, setResult] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [tone, setTone] = useState("professional");
+  const [showATS, setShowATS] = useState(false);
+  const [liUrl, setLiUrl] = useState("");
+  const [liStatus, setLiStatus] = useState(null);
+  const [newJD, setNewJD] = useState("");
+  const [bSub, setBSub] = useState("resume");
+  const resultRef = useRef(null);
+  const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",jobDesc:""});
+  const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
+  // hook widget state
+  const [hookInput, setHookInput] = useState("");
+  const [hookRole, setHookRole] = useState("ic");
+  const [hookLoading, setHookLoading] = useState(false);
+  const [hookResult, setHookResult] = useState(null);
+
+  useEffect(()=>{if(new URLSearchParams(window.location.search).get("unlocked")==="true")setUnlocked(true);},[]);
+  useEffect(()=>{if(result&&resultRef.current)resultRef.current.scrollIntoView({behavior:"smooth",block:"start"});},[result]);
+
+  const canGen = unlocked || usage < FREE_LIMIT;
+  const handleStripe = () => { const d = window.confirm("DEMO: Simulate $29 Stripe payment?"); if(d) setUnlocked(true); };
+
+  // Hook: Bullet Transform
+  const runHook = async (input) => {
+    const txt = input || hookInput;
+    if (!txt.trim()) return;
+    setHookLoading(true); setHookResult(null);
+    const raw = await callClaude(`Transform this weak resume bullet into 3 powerful versions for a ${ROLES.find(r=>r.id===hookRole)?.name}. Return ONLY JSON:\nWeak: "${txt}"\n{"versions":[{"label":"Conservative","text":"improved version","why":"what makes it stronger"},{"label":"Impact-Forward","text":"with business impact and plausible metrics","why":"what makes it stronger"},{"label":"Executive","text":"highest-level strategic framing","why":"what makes it stronger"}]}`);
+    setHookResult(pJ(raw));
+    setHookLoading(false);
+  };
+
+  // Builder
+  const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\nName: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume: Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
+  const mCP=(jd)=>`Expert cover letter. Tone: ${TONE_I[tone]}\n${C.name}→${C.company} for ${C.role}. HM: ${C.hiringManager||"Hiring Manager"}\nExp: ${C.experience}|Why: ${C.whyCompany}\nJD: ${jd||C.jobDesc||"none"}\n3 paragraphs: hook, 2-3 achievements, close. Under 350 words.`;
+  const generate=async()=>{
+    if(!canGen)return;setLoading(true);setResult(null);setShowATS(false);setNewJD("");
+    try{const t=await callClaude(bSub==="resume"?mRP():mCP());setResult(t);if(!unlocked)setUsage(u=>u+1);}catch{setResult("Error. Please try again.");}
+    setLoading(false);
+  };
+  const retailor=async()=>{
+    if(!newJD.trim())return;setRetailoring(true);setShowATS(false);
+    try{setResult(await callClaude(bSub==="resume"?mRP(newJD):mCP(newJD)));}catch{}
+    setRetailoring(false);
+  };
+  const importLI=async()=>{
+    if(!liUrl.trim())return;setLiStatus("loading");
+    try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Generate realistic resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","skills":"","experience":"","education":""}`);const p=pJ(t);if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setLiStatus("success");}
+    catch{setLiStatus("error");}
+  };
+
+  const rReady=R.name&&R.experience&&R.targetRole;
+  const cReady=C.name&&C.company&&C.role&&C.experience;
+  const ready=bSub==="resume"?rReady:cReady;
+  const jdATS=bSub==="resume"?(newJD||R.jobDesc):(newJD||C.jobDesc);
+  const doneSteps = new Set(result ? ["builder","feedback","sim","market"] : []);
+
+  const HOOK_EXAMPLES = ["Managed customer accounts","Helped with product launches","Worked on the engineering team","Responsible for sales"];
+
+  // ── HOME SCREEN ──
+  const HomeScreen = () => (
+    <div>
+      {/* HERO */}
+      <div className="hero">
+        <div className="hero-glow"/>
+        <div className="hero-tag">AI Career Platform</div>
+        <h1>Get the job.<br/>Not just the <i>resume.</i></h1>
+        <p>From blank page to offer letter — Standout guides you through every step.</p>
+        <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:8,background:"var(--b1)",border:"1px solid var(--line)",padding:"8px 16px",borderRadius:28,fontSize:13,color:"var(--mu)"}}>
+            <div className={`udot ${usage>0&&!unlocked?"used":""}`}/>{unlocked?"Unlimited access ✦":`${Math.max(0,FREE_LIMIT-usage)} free generation remaining`}
+          </div>
+        </div>
+      </div>
+
+      {/* HOOK WIDGET — Bullet Transformer */}
+      <div className="hook">
+        <div className="hook-card">
+          <div className="hook-label">Try it free · No signup</div>
+          <div className="hook-title">Turn a weak bullet into 3 powerful ones</div>
+          <div className="hook-sub">Paste any sentence from your resume. See the difference instantly.</div>
+          <div style={{marginBottom:12}}>
+            <label className="fl">Role Type</label>
+            <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
+              {ROLES.map(r=><button key={r.id} className={`tchip ${hookRole===r.id?"on":""}`} onClick={()=>setHookRole(r.id)}>{r.icon} {r.name}</button>)}
+            </div>
+          </div>
+          <div className="hook-input-wrap">
+            <textarea rows={2} placeholder='e.g. "Managed customer accounts" or "Helped with marketing"' value={hookInput} onChange={e=>setHookInput(e.target.value)}/>
+            <button className="btn bp" onClick={()=>runHook()} disabled={hookLoading||!hookInput.trim()} style={{flexShrink:0}}>
+              {hookLoading?<><div className="spin"/>…</>:"Transform ✦"}
+            </button>
+          </div>
+          <div className="hook-examples">
+            <span style={{fontSize:12,color:"var(--mu2)",marginRight:4}}>Try:</span>
+            {HOOK_EXAMPLES.map((ex,i)=><span key={i} className="hook-ex" onClick={()=>{setHookInput(ex);runHook(ex);}}>"{ex}"</span>)}
+          </div>
+          {hookLoading&&<div className="loading" style={{padding:"20px 0"}}><div className="spin"/>Transforming your bullet…</div>}
+          {hookResult&&!hookLoading&&(
+            <div className="hook-result">
+              <div className="hook-original">{hookInput}</div>
+              {hookResult.versions?.map((v,i)=>(
+                <div key={i} className="hook-ver">
+                  <div className="hook-ver-label">
+                    <span>{v.label}</span>
+                    <button className="ibtn" onClick={()=>navigator.clipboard.writeText(v.text)}>Copy</button>
+                  </div>
+                  <div className="hook-ver-text">{v.text}</div>
+                  <div className="hook-ver-why">{v.why}</div>
+                </div>
+              ))}
+              <div style={{marginTop:16,textAlign:"center"}}>
+                <p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Ready to build your full resume?</p>
+                <button className="btn bp" onClick={()=>setActiveTool("builder")}>Build My Full Resume →</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* JOURNEY */}
+      <div className="journey">
+        <div className="journey-title">Your path to the offer</div>
+        <div className="journey-sub">Follow these steps in order — each one builds on the last.</div>
+        <div className="steps">
+          {TOOL_STEPS.map((step, idx) => {
+            const isDone = doneSteps.has(step.id) || (step.id==="builder"&&result);
+            return (
+              <div key={step.id} className={`step ${isDone?"done":""}`} onClick={()=>setActiveTool(step.id)}>
+                <div className="step-num">{isDone?"✓":step.num}</div>
+                <div className="step-body">
+                  <div className="step-title">
+                    {step.icon} {step.title}
+                    {step.badge&&<span className="step-badge new">{step.badge}</span>}
+                    {isDone&&<span className="step-badge done">Done</span>}
+                  </div>
+                  <div className="step-desc">{step.desc}</div>
+                </div>
+                <div className="step-arrow">→</div>
+              </div>
+            );
+          })}
+        </div>
+        {!unlocked&&(
+          <div style={{marginTop:24,background:"var(--b1)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:22,textAlign:"center"}}>
+            <div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:6}}>Unlock everything. Pay once.</div>
+            <p style={{fontSize:14,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>One $29 payment. Every tool. No monthly subscription — ever.</p>
+            <button className="sbtn" onClick={handleStripe}>🔒 Unlock for $29</button>
+            <div className="snote">Secure checkout · Instant access · No recurring charges</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // ── BUILDER TOOL ──
+  const BuilderTool = () => (
+    <div className="panel">
+      <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back</div>
+      <div className="panel-header">
+        <div className="panel-step-badge">Step 2</div>
+        <div className="panel-title">Build Your Resume</div>
+        <div className="panel-sub">Fill in your details and get a polished, ATS-optimized resume in seconds.</div>
+      </div>
+      {!canGen&&!loading?(
+        <div className="pw"><h2>Unlock to generate more</h2><p>You've used your free generation. Unlock all 8 tools for a one-time payment.</p><div className="ptag">$29</div><span className="psub">one-time · lifetime access</span><ul className="perks">{["Unlimited resumes & cover letters","All 8 career tools","ATS scoring","Job tracker with AI insights"].map(p=><li key={p}>{p}</li>)}</ul><button className="sbtn" onClick={handleStripe}>🔒 Pay $29 with Stripe</button><div className="snote">Secure · Instant · No recurring charges</div></div>
+      ):(
+        <>
+          {!unlocked&&<div className="dbanner"><strong>{Math.max(0,FREE_LIMIT-usage)} free generation</strong> remaining — unlock all tools for <strong>$29</strong></div>}
+          {/* Sub tabs */}
+          <div style={{display:"flex",gap:6,marginBottom:14}}>
+            {[["resume","📄 Resume"],["cover","✉️ Cover Letter"]].map(([id,l])=><button key={id} className={`btn ${bSub===id?"bp":"bgh"} bsm`} onClick={()=>{setBSub(id);setResult(null);setShowATS(false);}}>{l}</button>)}
+          </div>
+          {/* LinkedIn */}
+          {bSub==="resume"&&<div className="card"><div className="fl">LinkedIn Import</div><div className="fhint" style={{marginBottom:12}}>Paste your LinkedIn URL to auto-fill all the fields below</div><div className="lirow"><input placeholder="https://linkedin.com/in/yourname" value={liUrl} onChange={e=>{setLiUrl(e.target.value);setLiStatus(null);}}/><button className="btn bp bsm" style={{flexShrink:0}} onClick={importLI} disabled={!liUrl.trim()||liStatus==="loading"}>{liStatus==="loading"?"Importing…":"Import"}</button></div>{liStatus==="success"&&<div className="lis ok">✓ Fields filled below — review and adjust</div>}{liStatus==="error"&&<div className="lis err">✕ Couldn't parse — please fill in manually</div>}{liStatus==="loading"&&<div className="lis ld">Extracting profile data…</div>}</div>}
+          {/* Tone */}
+          <div className="card"><div className="fl">Tone</div><div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${tone===t.id?"on":""}`} onClick={()=>setTone(t.id)}>{t.l}</button>)}</div></div>
+          {/* Form */}
+          {bSub==="resume"?(
+            <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
+              <div className="g2"><div className="fg"><label className="fl">Full Name</label><input placeholder="Alex Johnson" value={R.name} onChange={e=>setR(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Current Title</label><input placeholder="Senior Marketing Manager" value={R.jobTitle} onChange={e=>setR(p=>({...p,jobTitle:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input placeholder="alex@email.com" value={R.email} onChange={e=>setR(p=>({...p,email:e.target.value}))}/></div><div className="fg"><label className="fl">Phone</label><input placeholder="(555) 000-0000" value={R.phone} onChange={e=>setR(p=>({...p,phone:e.target.value}))}/></div></div>
+              <div className="fg"><label className="fl">Target Role</label><input placeholder="Director of Marketing at a Series B SaaS" value={R.targetRole} onChange={e=>setR(p=>({...p,targetRole:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Work Experience</label><div className="fhint" style={{marginBottom:8}}>List your jobs, companies, dates, and what you accomplished. Include numbers where you can.</div><textarea rows={5} placeholder="E.g. Acme Corp, Marketing Manager, 2021–2024 — Grew email list from 10k to 85k, managed $2M ad budget, launched 3 product lines…" value={R.experience} onChange={e=>setR(p=>({...p,experience:e.target.value}))}/></div>
+              <div className="g2"><div className="fg"><label className="fl">Education</label><textarea rows={2} placeholder="Degree, school, year" value={R.education} onChange={e=>setR(p=>({...p,education:e.target.value}))}/></div><div className="fg"><label className="fl">Skills</label><textarea rows={2} placeholder="Python, HubSpot, SEO…" value={R.skills} onChange={e=>setR(p=>({...p,skills:e.target.value}))}/></div></div>
+              <div className="fg"><label className="fl">Job Description <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional but recommended)</span></label><div className="fhint" style={{marginBottom:8}}>Paste the job description — the AI will match your resume's keywords to it for a better ATS score</div><textarea rows={4} placeholder="Paste the full job posting here…" value={R.jobDesc} onChange={e=>setR(p=>({...p,jobDesc:e.target.value}))}/></div>
+              <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Crafting your resume…</>:"Generate Resume ✦"}</button>
+            </div>
+          ):(
+            <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
+              <div className="g2"><div className="fg"><label className="fl">Your Name</label><input placeholder="Alex Johnson" value={C.name} onChange={e=>setC(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Hiring Manager</label><input placeholder="Sarah Chen (optional)" value={C.hiringManager} onChange={e=>setC(p=>({...p,hiringManager:e.target.value}))}/></div><div className="fg"><label className="fl">Company</label><input placeholder="Acme Corp" value={C.company} onChange={e=>setC(p=>({...p,company:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input placeholder="Senior Product Manager" value={C.role} onChange={e=>setC(p=>({...p,role:e.target.value}))}/></div></div>
+              <div className="fg"><label className="fl">Your Relevant Experience</label><textarea rows={4} placeholder="Your most relevant experience and achievements for this specific role" value={C.experience} onChange={e=>setC(p=>({...p,experience:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Why This Company?</label><textarea rows={2} placeholder="What specifically excites you about this company or role?" value={C.whyCompany} onChange={e=>setC(p=>({...p,whyCompany:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Job Description</label><textarea rows={4} placeholder="Paste the job posting here" value={C.jobDesc} onChange={e=>setC(p=>({...p,jobDesc:e.target.value}))}/></div>
+              <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Writing your cover letter…</>:"Generate Cover Letter ✦"}</button>
+            </div>
+          )}
+        </>
+      )}
+      {loading&&<div className="loading"><div className="spin"/>Generating — this takes about 10 seconds…</div>}
+      {result&&!loading&&(
+        <div ref={resultRef}>
+          <div className="rcard">
+            <div className="rhdr"><div className="rtitle">Your {bSub==="resume"?"Resume":"Cover Letter"}</div>
+              <div className="racts"><button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"Copied!":"Copy"}</button><button className="ibtn" onClick={()=>setShowATS(s=>!s)}>{showATS?"Hide ATS":"ATS Score"}</button></div>
+            </div>
+            <div className="rbody">{result}</div>
+            <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={retailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
+            {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback and see your market ranking</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all tools · $29</button></div></>}
+          </div>
+          {showATS&&<ATSPanel result={result} jobDesc={jdATS}/>}
+          {result&&<div style={{marginTop:16,display:"flex",gap:9,flexWrap:"wrap"}}><button className="btn bo bsm" onClick={()=>setActiveTool("feedback")}>📋 Get Recruiter Feedback →</button><button className="btn bo bsm" onClick={()=>setActiveTool("sim")}>⏱️ Run 6-Sec Test →</button><button className="btn bo bsm" onClick={()=>setActiveTool("market")}>📊 Compare to Market →</button></div>}
+        </div>
+      )}
+    </div>
+  );
+
+  const toolProps = { resumeText: result, jobDesc: R.jobDesc };
+
+  const TOOL_PANELS = {
+    positioning: { stepNum:"1", title:"Define Your Positioning", sub:"5 questions that extract your career story — what you solve, at what scale, and what makes you different. This shapes everything else." },
+    feedback:    { stepNum:"3", title:"Get Recruiter Feedback", sub:"Honest, direct feedback — exactly how a senior recruiter reads your resume in the first 10 seconds." },
+    sim:         { stepNum:"4", title:"The 6-Second Test",      sub:"A real-time simulation of how a recruiter scans your resume. Watch where the eye goes and what gets missed." },
+    market:      { stepNum:"5", title:"Market Comparison",      sub:"See your percentile ranking among other candidates for your target role." },
+    roleiq:      { stepNum:"6", title:"Role Intelligence",      sub:"The exact language, metrics, and framing that hiring managers in your function look for." },
+    coach:       { stepNum:"7", title:"Coaching Mode",          sub:"Tell your career story in plain English. The coach turns it into powerful resume bullets." },
+    tracker:     { stepNum:"8", title:"Track Your Applications",sub:"Log every application, track stages, and let AI find patterns in what's getting you interviews." },
+  };
+
+  return (
+    <>
+      <style>{S}</style>
+      <div className="app">
+        <div className="grid"/>
+        <nav className="nav">
+          <div className="logo" onClick={()=>setActiveTool(null)} style={{cursor:"pointer"}}><div className="logo-dot"/>Standout</div>
+          <div className="nav-r">
+            {activeTool&&<button className="btn bgh bsm" onClick={()=>setActiveTool(null)}>← Home</button>}
+            {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $29</button>:<div className="nav-pill">✦ Unlimited</div>}
+          </div>
+        </nav>
+
+        {!activeTool && <HomeScreen/>}
+        {activeTool==="builder" && <BuilderTool/>}
+        {activeTool&&activeTool!=="builder"&&(
+          <div className="panel">
+            <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back to all steps</div>
+            {TOOL_PANELS[activeTool]&&(
+              <div className="panel-header">
+                <div className="panel-step-badge">Step {TOOL_PANELS[activeTool].stepNum}</div>
+                <div className="panel-title">{TOOL_PANELS[activeTool].title}</div>
+                <div className="panel-sub">{TOOL_PANELS[activeTool].sub}</div>
+              </div>
+            )}
+            {activeTool==="positioning"&&<CareerPositioning/>}
+            {activeTool==="feedback"&&<RecruiterFeedback {...toolProps}/>}
+            {activeTool==="sim"&&<RecruiterSim resumeText={result}/>}
+            {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc}/>}
+            {activeTool==="roleiq"&&<RoleIQ/>}
+            {activeTool==="coach"&&<CoachingMode/>}
+            {activeTool==="tracker"&&<JobTracker/>}
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
