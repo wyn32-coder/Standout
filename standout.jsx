@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 
-const STRIPE_LINK = "https://buy.stripe.com/YOUR_PAYMENT_LINK";
+const STRIPE_LINK = "https://buy.stripe.com/7sYfZh54cfRb3iReAVew800";
 const FREE_LIMIT = 1;
 
 // ─── FONT: DM Serif Display (elegant, readable) + DM Sans (clean body) ────────
