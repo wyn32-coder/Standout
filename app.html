@@ -352,12 +352,17 @@ const CP_QS = [
 ];
 
 async function callClaude(prompt, maxT = 1000) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:maxT, messages:[{role:"user",content:prompt}] })
-  });
-  const data = await res.json();
-  return data.content?.map(b=>b.text||"").join("\n")||"";
+  try {
+    const res = await fetch("/api/transform", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ type:"general", prompt })
+    });
+    const data = await res.json();
+    return data.text || "";
+  } catch(e) {
+    console.error("API error:", e);
+    return "";
+  }
 }
 function pJ(t){try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch{return null;}}
 
