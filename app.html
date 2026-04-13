@@ -419,11 +419,11 @@ function ATSPanel({result,jobDesc,onImprove}){
   let score=0;const checks=[];
   const hm=/\d+%|\d+x|\$[\d,]+|\d+\s*(people|team|clients)/i.test(result);
   checks.push({ok:hm,icon:hm?"✅":"⚠️",t:hm?"Quantified achievements present":"Add metrics — numbers boost ATS ranking"});if(hm)score+=25;
-  const sc=["experience","education","skills","summary"].filter(s=>result.toLowerCase().includes(s));
+  const sc=["experience","education","skills","summary","professional","work history","qualifications","profile","objective","certifications","achievements"].filter(s=>result.toLowerCase().includes(s));
   checks.push({ok:sc.length>=3,icon:sc.length>=3?"✅":"⚠️",t:sc.length>=3?`Section headers found`:"Add standard section headers"});if(sc.length>=3)score+=20;
   const wc=result.split(/\s+/).length;
   checks.push({ok:wc>=300&&wc<=700,icon:wc>=300&&wc<=700?"✅":"⚠️",t:`${wc} words — ${wc>=300&&wc<=700?"ideal range":"aim for 300–700"}`});if(wc>=300&&wc<=700)score+=15;
-  const vc=["led","built","created","managed","developed","launched","drove","increased","reduced","improved"].filter(v=>new RegExp(`\b${v}\b`,"i").test(result)).length;
+  const vc=["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","directed","produced","grew","saved","transformed","streamlined","negotiated","trained","mentored","analyzed","identified","secured","owned","scaled","deployed","partnered","collaborated","facilitated","introduced","optimized"].filter(v=>new RegExp(`\\b${v}\\b`,"i").test(result)).length;
   checks.push({ok:vc>=3,icon:vc>=3?"✅":"⚠️",t:vc>=3?`${vc} action verbs found`:`Only ${vc} action verbs — add more`});if(vc>=3)score+=20;
   if(jobDesc?.length>50){const jw=jobDesc.toLowerCase().split(/\W+/).filter(w=>w.length>4);const pct=Math.round((jw.filter(w=>result.toLowerCase().includes(w)).length/Math.max(jw.length,1))*100);checks.push({ok:pct>=40,icon:pct>=40?"✅":"⚠️",t:pct>=40?`${pct}% keyword match`:`${pct}% keyword match — re-tailor`});if(pct>=40)score+=20;}
   else{score+=20;checks.push({ok:true,icon:"ℹ️",t:"Paste a JD to check keyword match"});}
@@ -463,7 +463,7 @@ function RecruiterSim({resumeText,onImprove}){
 }
 
 // ─── TOOL: MARKET COMPARISON ──────────────────────────────────────────────────
-function MarketComparison({resumeText,jobDesc}){
+function MarketComparison({resumeText,jobDesc,onImprove}){
   const [role,setRole]=useState("");const [loading,setLoading]=useState(false);const [data,setData]=useState(null);
   const analyze=async()=>{
     if(!resumeText||!role.trim())return;setLoading(true);setData(null);
@@ -474,11 +474,23 @@ JD: ${jobDesc.slice(0,500)}`:""}\n{"percentile":65,"percentileLabel":"Top 35% of
   return(<div><div className="card"><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Live Market Comparison</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>See how your resume ranks against others competing for the same role</div><div className="fg"><label className="fl">Target Role</label><input placeholder='"Director of Customer Success" or "Senior Software Engineer"' value={role} onChange={e=>setRole(e.target.value)}/></div><button className="btn bp" onClick={analyze} disabled={loading||!resumeText||!role.trim()}>{loading?"Analyzing…":"Compare to Market ✦"}</button>{!resumeText&&<p style={{fontSize:13,color:"var(--red)",marginTop:9}}>Generate a resume first in Step 3.</p>}</div>
   {loading&&<div className="loading"><div className="spin"/>Benchmarking…</div>}
   {data&&!loading&&(<div style={{animation:"up .3s ease"}}><div className="mkt-score"><div><div className="mkt-pct">{data.percentile}<span style={{fontSize:22,letterSpacing:0}}>th</span></div><div className="mkt-pct-sub">percentile</div></div><div style={{flex:1}}><div style={{fontFamily:"'DM Serif Display',serif",fontSize:16,color:"var(--cr)",marginBottom:10}}>{data.percentileLabel}</div>{data.dimensions?.map((d,i)=>(<div key={i} className="mkt-bar-wrap"><div className="mkt-bar-lbl"><span>{d.label}</span><span>{d.score}/100</span></div><div className="mkt-bar-track"><div className="mkt-bar-fill" style={{width:`${d.score}%`,background:d.score>=d.benchmark?"#3db87a":"#f4722b"}}/><div className="mkt-bar-mark" style={{left:`${d.benchmark}%`}}/></div><div style={{fontSize:11,color:"var(--mu2)",marginTop:2}}>{d.note}</div></div>))}</div></div>
-  <div className="g2"><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>🏆 Top 20% have</div>{data.topPercentHas?.map((t,i)=><div key={i} className="mkt-i"><span>✦</span><span className="mkt-i-txt">{t}</span></div>)}</div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>⚠ You're missing</div>{data.youAreMissing?.map((t,i)=><div key={i} className="mkt-i"><span>○</span><span className="mkt-i-txt">{t}</span></div>)}</div></div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--o)"}}>⚡ Quick wins</div>{data.quickWins?.map((w,i)=><div key={i} className="mkt-i"><span>{i+1}.</span><span className="mkt-i-txt">{w}</span></div>)}</div></div>)}</div>);
+  <div className="g2"><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>🏆 Top 20% have</div>{data.topPercentHas?.map((t,i)=><div key={i} className="mkt-i"><span>✦</span><span className="mkt-i-txt">{t}</span></div>)}</div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>⚠ You're missing</div>{data.youAreMissing?.map((t,i)=><div key={i} className="mkt-i"><span>○</span><span className="mkt-i-txt">{t}</span></div>)}</div></div><div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--o)"}}>⚡ Quick wins</div>{data.quickWins?.map((w,i)=><div key={i} className="mkt-i"><span>{i+1}.</span><span className="mkt-i-txt">{w}</span></div>)}</div>
+  {onImprove&&data&&<div style={{marginTop:16,paddingTop:16,borderTop:"1px solid var(--line)"}}>
+    <button className="btn bp bfull" style={{justifyContent:"center"}} onClick={()=>onImprove("Market",{
+      role,
+      percentile: data.percentile,
+      missing: data.youAreMissing||[],
+      quickWins: data.quickWins||[],
+      topHas: data.topPercentHas||[],
+      dimensions: data.dimensions||[]
+    })}>⚡ Apply Market Improvements to Resume</button>
+    <div style={{fontSize:11,color:"var(--mu2)",marginTop:6,textAlign:"center"}}>Rewrites your resume to close the gap with top {data.percentile<50?"50":"20"}% candidates</div>
+  </div>}
+</div>)}</div>);
 }
 
 // ─── TOOL: COACHING ───────────────────────────────────────────────────────────
-function CoachingMode(){
+function CoachingMode({onAddToResume}){
   const [msgs,setMsgs]=useState([{role:"ai",text:"Hey! I'm your career coach. Tell me about your biggest win at work — don't worry about sounding professional yet, just tell me what happened."}]);
   const [input,setInput]=useState("");const [loading,setLoading]=useState(false);const [bullets,setBullets]=useState([]);const chatRef=useRef(null);
   useEffect(()=>{if(chatRef.current)chatRef.current.scrollTop=chatRef.current.scrollHeight;},[msgs]);
@@ -493,7 +505,24 @@ function CoachingMode(){
     setLoading(false);
   };
   return(<div><div className="card" style={{padding:0,overflow:"hidden"}}><div style={{padding:"14px 18px",borderBottom:"1px solid var(--line)",display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:"rgba(244,114,43,.15)",border:"1px solid var(--line)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🧑‍💼</div><div><div style={{fontSize:14,fontWeight:600,color:"var(--cr)"}}>Career Coach</div><div style={{fontSize:12,color:"var(--mu)"}}>Turns your stories into resume bullets</div></div><div style={{marginLeft:"auto",width:8,height:8,borderRadius:"50%",background:"var(--green)",animation:"pulse 2s infinite"}}/></div><div style={{padding:"15px 18px"}}>{msgs.length===1&&<div className="c-starters">{["Tell me about your biggest win","What makes you different?","What scale have you operated at?"].map((s,i)=><span key={i} className="c-starter" onClick={()=>send(s)}>{s}</span>)}</div>}<div className="chat-box" ref={chatRef}>{msgs.map((m,i)=><div key={i} className={`msg ${m.role}`}><div className="msg-lbl">{m.role==="ai"?"Coach":"You"}</div><div className="msg-bubble">{m.text}</div></div>)}{loading&&<div className="msg ai"><div className="msg-lbl">Coach</div><div className="msg-bubble" style={{color:"var(--mu)"}}><span style={{animation:"pulse 1.2s infinite",display:"inline-block"}}>Thinking…</span></div></div>}</div><div className="chat-input-row"><textarea rows={2} placeholder="Tell your story — the coach will pull out the bullets…" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button className="btn bp bsm" onClick={()=>send()} disabled={loading||!input.trim()} style={{flexShrink:0}}>Send</button></div></div></div>
-  {bullets.length>0&&(<div style={{marginTop:14}}><div className="fl" style={{marginBottom:10}}>Generated Bullets</div>{bullets.map((b,i)=><div key={i} className="c-bullet"><div className="c-bullet-text">{b.text}</div><div className="c-bullet-meta"><span className="ctag">{b.type}</span><span style={{fontSize:12,color:"var(--mu2)",fontStyle:"italic"}}>{b.why}</span><button className="ibtn" style={{marginLeft:"auto"}} onClick={()=>navigator.clipboard.writeText(b.text)}>Copy</button></div></div>)}</div>)}</div>);
+  {bullets.length>0&&(<div style={{marginTop:14}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:8}}>
+      <div className="fl" style={{margin:0}}>Generated Bullets</div>
+      {onAddToResume&&<button className="btn bp bsm" onClick={()=>onAddToResume(bullets.map(b=>b.text).join("\n"))}>⚡ Add All to Resume →</button>}
+    </div>
+    {bullets.map((b,i)=><div key={i} className="c-bullet">
+      <div className="c-bullet-text">{b.text}</div>
+      <div className="c-bullet-meta">
+        <span className="ctag">{b.type}</span>
+        <span style={{fontSize:12,color:"var(--mu2)",fontStyle:"italic"}}>{b.why}</span>
+        <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+          {onAddToResume&&<button className="ibtn" onClick={()=>onAddToResume(b.text)}>+ Add to Resume</button>}
+          <button className="ibtn" onClick={()=>navigator.clipboard.writeText(b.text)}>Copy</button>
+        </div>
+      </div>
+    </div>)}
+    {onAddToResume&&<div style={{fontSize:11,color:"var(--mu2)",marginTop:8,textAlign:"center"}}>Bullets are added to your Work Experience field in Step 2</div>}
+  </div>)}</div>);
 }
 
 // ─── TOOL: RECRUITER FEEDBACK ─────────────────────────────────────────────────
@@ -515,10 +544,24 @@ JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary"
 }
 
 // ─── TOOL: ROLE IQ ────────────────────────────────────────────────────────────
-function RoleIQ(){
+function RoleIQ({resumeText,onImprove}){
   const [sel,setSel]=useState(null);const intel=sel?ROLE_INTEL[sel]:null;
   return(<div><div className="card"><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Role Intelligence</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>Select your target role — see the exact language, metrics, and framing that recruiters in that function look for</div><div className="ri-grid">{ROLES.map(r=><div key={r.id} className={`ri-role ${sel===r.id?"on":""}`} onClick={()=>setSel(r.id)}><div className="ri-role-icon">{r.icon}</div><div className="ri-role-name">{r.name}</div></div>)}</div></div>
-  {intel&&(<div style={{animation:"up .3s ease"}}><div className="g2"><div className="card" style={{margin:0}}><div className="fl">Language to Use</div><div>{intel.lang.map((l,i)=><span key={i} className="ri-tag" style={{background:"rgba(91,163,217,.1)",color:"#5ba3d9",borderColor:"rgba(91,163,217,.18)"}}>{l}</span>)}</div></div><div className="card" style={{margin:0}}><div className="fl">Metrics That Matter</div><div>{intel.metrics.map((m,i)=><span key={i} className="ri-tag" style={{background:"rgba(61,184,122,.09)",color:"var(--green)",borderColor:"rgba(61,184,122,.16)"}}>{m}</span>)}</div></div></div><div className="card"><div className="fl">Framing Guidance</div><p style={{fontSize:14,color:"rgba(237,232,223,.7)",lineHeight:1.7}}>{intel.framing}</p></div><div className="card"><div className="fl">Market Benchmarks</div>{intel.benchmarks.map((b,i)=><div key={i} className="ri-bench"><div className="ri-bench-t">{b.t}</div><div className="ri-bench-v">{b.v}</div></div>)}</div></div>)}</div>);
+  {intel&&(<div style={{animation:"up .3s ease"}}>
+    <div className="g2">
+      <div className="card" style={{margin:0}}><div className="fl">Language to Use</div><div>{intel.lang.map((l,i)=><span key={i} className="ri-tag" style={{background:"rgba(91,163,217,.1)",color:"#5ba3d9",borderColor:"rgba(91,163,217,.18)"}}>{l}</span>)}</div></div>
+      <div className="card" style={{margin:0}}><div className="fl">Metrics That Matter</div><div>{intel.metrics.map((m,i)=><span key={i} className="ri-tag" style={{background:"rgba(61,184,122,.09)",color:"var(--green)",borderColor:"rgba(61,184,122,.16)"}}>{m}</span>)}</div></div>
+    </div>
+    <div className="card"><div className="fl">Framing Guidance</div><p style={{fontSize:14,color:"rgba(237,232,223,.7)",lineHeight:1.7}}>{intel.framing}</p></div>
+    <div className="card"><div className="fl">Market Benchmarks</div>{intel.benchmarks.map((b,i)=><div key={i} className="ri-bench"><div className="ri-bench-t">{b.t}</div><div className="ri-bench-v">{b.v}</div></div>)}</div>
+    {onImprove&&resumeText&&<div style={{marginTop:4,paddingTop:4}}>
+      <button className="btn bp bfull" style={{justifyContent:"center"}} onClick={()=>onImprove("RoleIQ",{role:sel,intel})}>
+        ⚡ Optimize Resume for {ROLES.find(r=>r.id===sel)?.name} Role
+      </button>
+      <div style={{fontSize:11,color:"var(--mu2)",marginTop:6,textAlign:"center"}}>Rewrites your resume using {ROLES.find(r=>r.id===sel)?.name} language, metrics, and framing</div>
+    </div>}
+    {onImprove&&!resumeText&&<div style={{marginTop:8,fontSize:13,color:"var(--mu)",textAlign:"center",padding:"10px 0"}}>Generate a resume in Step 2 first to enable optimization</div>}
+  </div>)}</div>);
 }
 
 // ─── TOOL: JOB TRACKER ───────────────────────────────────────────────────────
@@ -625,12 +668,111 @@ function App() {
     try{const t=await callClaude(bSub==="resume"?mRP():mCP());setResult(t);if(!unlocked)setUsage(u=>u+1);}catch{setResult("Error. Please try again.");}
     setLoading(false);
   };
+  const addBulletsToResume=(bulletText)=>{
+    setR(prev=>({
+      ...prev,
+      experience: prev.experience
+        ? prev.experience + "\n\n" + bulletText
+        : bulletText
+    }));
+    setImportVersion(v=>v+1);
+    // Show brief confirmation
+    setImproveMsg("✓ Added to your resume — go to Step 2 to review");
+    setTimeout(()=>setImproveMsg(""), 3000);
+  };
+
   const applyImprovements=async(source, feedback)=>{
     if(!result)return;
     setImproving(true);
     setImproveMsg(`Applying ${source} improvements…`);
     try{
-      const improved = await callClaude(`You are an expert resume writer. Improve this resume based on the following feedback from a ${source} analysis.\n\nFEEDBACK TO ADDRESS:\n${feedback}\n\nCURRENT RESUME:\n${result}\n\nRewrite the resume incorporating all the improvements. Keep the same format and structure but fix every issue mentioned. Return ONLY the improved resume text, no explanation.`);
+      let prompt = "";
+
+      if(source==="ATS"){
+        // feedback = exact yellow warning text from ATS checks e.g. "Only 0 action verbs — add more, Add standard section headers"
+        const fixes = feedback.split(",").map(f=>f.trim()).filter(Boolean);
+        const fixList = fixes.map((f,i)=>`${i+1}. ${f}`).join("\n");
+        prompt = `You are an expert ATS resume optimizer. Fix ONLY the specific issues listed below — do not change anything else.
+
+SPECIFIC ISSUES TO FIX (these are the exact yellow warnings from the ATS checker):
+${fixList}
+
+HOW TO FIX EACH ONE:
+- "Only X action verbs — add more" → Start every experience bullet with a strong action verb: Led, Built, Drove, Increased, Reduced, Managed, Launched, Developed, Improved, Achieved, Delivered, Spearheaded, Generated, Established, Implemented, Optimized, Oversaw, Transformed
+- "Add standard section headers" → Add clear bold headers: PROFESSIONAL SUMMARY, EXPERIENCE, EDUCATION, SKILLS
+- "X% keyword match — re-tailor" → Naturally weave in more keywords from the job description throughout the bullets
+- "aim for 300–700 words" → Expand or condense the resume to hit the ideal word count range
+- "Add metrics" → Add specific numbers, percentages, dollar amounts, or team sizes to achievements
+
+STRICT RULES:
+- Fix ONLY the issues listed above
+- Keep every company, date, job title, and achievement exactly as written
+- Do NOT rephrase bullets that already start with action verbs
+- Do NOT remove any content
+- Do NOT change the overall structure
+- Return ONLY the complete improved resume text, no explanation
+
+CURRENT RESUME:
+${result}`;
+
+      } else if(source==="Recruiter"){
+        // feedback = "Grade: B. Fixes needed: label: detail; label: detail. Missing: item1, item2"
+        prompt = `You are a senior recruiter rewriting this resume to address specific feedback. Make ONLY the changes needed to fix the issues below.
+
+RECRUITER FEEDBACK TO ADDRESS:
+${feedback}
+
+HOW TO APPLY EACH FIX:
+- For each "Critical Fix" — find the relevant section and strengthen it with the specific improvement described
+- For each "Missing" item — add a brief but specific mention of that element where it fits naturally
+- For grade issues — focus on the specific weakness causing the low grade
+
+STRICT RULES:
+- Keep ALL existing companies, job titles, dates, metrics, and achievements
+- Only ADD or IMPROVE — do not remove or water down existing content
+- Do not change the resume structure
+- If adding missing elements, weave them naturally into existing bullets or add brief new ones
+- Aim to improve the grade by one full letter
+- Return ONLY the complete improved resume text, no explanation
+
+CURRENT RESUME:
+${result}`;
+
+      } else if(source==="Market"){
+        const {role:mRole, percentile, missing, quickWins, topHas, dimensions} = feedback;
+        const lowDims = (dimensions||[]).filter(d=>d.score<d.benchmark).map(d=>`${d.label} (${d.score}/100, benchmark ${d.benchmark}) — ${d.note}`).join("\n");
+        prompt = `You are an expert resume writer. Improve this resume to move from the ${percentile}th percentile toward the top 20% for a "${mRole}" role.\n\nWHAT YOU ARE MISSING — add these naturally:\n${(missing||[]).map((m,i)=>`${i+1}. ${m}`).join("\n")}\n\nQUICK WINS — apply every one:\n${(quickWins||[]).map((w,i)=>`${i+1}. ${w}`).join("\n")}\n\nWHAT TOP 20% HAVE — incorporate where relevant:\n${(topHas||[]).map(t=>`- ${t}`).join("\n")}\n\nDIMENSIONS BELOW BENCHMARK:\n${lowDims||"All at or above benchmark"}\n\nSTRICT RULES:\n- Keep ALL existing experience, companies, titles, dates and metrics\n- Only ADD what is missing — do not remove anything\n- Use "${mRole}" specific language and terminology\n- Apply every quick win listed\n- Return ONLY the improved resume text\n\nCURRENT RESUME:\n${result}`;
+
+      } else if(source==="RoleIQ"){
+        const {role:rId, intel:ri} = feedback;
+        const roleName = ROLES.find(r=>r.id===rId)?.name || rId;
+        prompt = `You are an expert resume writer optimizing this resume for a ${roleName} role.\n\nROLE INTELLIGENCE:\nLanguage to use: ${ri.lang.join(", ")}\nKey metrics to include: ${ri.metrics.join(", ")}\nFraming guidance: ${ri.framing}\nWhat top candidates include: ${ri.benchmarks.map(b=>b.t+": "+b.v).join(". ")}\n\nOPTIMIZATION RULES:\n- Reframe existing achievements using ${roleName} specific language\n- Add or emphasize the metrics that matter for this role: ${ri.metrics.join(", ")}\n- Apply the framing guidance throughout: ${ri.framing}\n- Use these keywords naturally: ${ri.lang.join(", ")}\n- Address what top candidates include: ${ri.benchmarks[0]?.v||""}\n- Keep ALL existing experience, companies, dates — only reframe and strengthen\n- Return ONLY the improved resume text\n\nCURRENT RESUME:\n${result}`;
+
+      } else {
+        // source === "6-Second" — feedback = "What was missed: X, Y. First impression: Z. Eye path: ..."
+        prompt = `You are an expert resume writer improving this resume for maximum 6-second recruiter impact.
+
+6-SECOND SCAN FEEDBACK:
+${feedback}
+
+HOW TO APPLY EACH FIX:
+- For each item "missed" → make it more visually prominent — move it higher, bold it, or add more specifics
+- For "first impression" issues → strengthen the top 3 lines with your most impressive metric or title
+- For "eye path" issues → reorganize so name → title → top achievement → company names are the first things seen
+
+STRICT RULES:
+- Keep ALL existing content — only reorganize and strengthen
+- The name and current title must be at the very top, prominent
+- The single most impressive achievement should appear in the first 5 lines
+- Every bullet must start with an action verb
+- Company names must be clearly visible (not buried in dense paragraphs)
+- Return ONLY the complete improved resume text, no explanation
+
+CURRENT RESUME:
+${result}`;
+      }
+
+      const improved = await callClaude(prompt, 1500);
       setResult(improved);
       setImproveMsg("");
     }catch(e){
@@ -1008,6 +1150,7 @@ function App() {
       )}
       {loading&&<div className="loading"><div className="spin"/>Generating — this takes about 10 seconds…</div>}
       {improving&&<div className="loading" style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:10,margin:"0 0 14px"}}><div className="spin"/>{improveMsg||"Applying improvements…"}</div>}
+      {!improving&&improveMsg&&<div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:10,padding:"10px 16px",margin:"0 0 14px",fontSize:13,color:"var(--green)",textAlign:"center"}}>{improveMsg}</div>}
       {result&&!loading&&(
         <div ref={resultRef}>
           <div className="rcard">
@@ -1101,9 +1244,9 @@ function App() {
             {activeTool==="positioning"&&<CareerPositioning/>}
             {activeTool==="feedback"&&<RecruiterFeedback {...toolProps} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="sim"&&<RecruiterSim resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
-            {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc}/>}
-            {activeTool==="roleiq"&&<RoleIQ/>}
-            {activeTool==="coach"&&<CoachingMode/>}
+            {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
+            {activeTool==="roleiq"&&<RoleIQ resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
+            {activeTool==="coach"&&<CoachingMode onAddToResume={(txt)=>{addBulletsToResume(txt);setActiveTool("builder");}}/>}
             {activeTool==="tracker"&&<JobTracker/>}
           </div>
         )}
