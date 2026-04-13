@@ -4,13 +4,13 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Standout — AI Career Platform</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <style>body{margin:0;padding:0;}</style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#09101a;color:#f4722b;font-family:sans-serif;font-size:18px;gap:12px"><div style="width:20px;height:20px;border:3px solid rgba(244,114,43,.3);border-top-color:#f4722b;border-radius:50%;animation:spin 0.8s linear infinite"></div>Loading Standout...</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>
   <script type="text/babel" data-presets="react">
 
 const STRIPE_LINK = "https://buy.stripe.com/7sYfZh54cfRb3iReAVew800";
@@ -804,7 +804,7 @@ JD: ${jd||C.jobDesc||"none"}
   );
 }
 
-ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.createRoot(rootEl).render(React.createElement(App));
   </script>
 </body>
 </html>
