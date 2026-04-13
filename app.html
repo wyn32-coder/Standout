@@ -565,11 +565,6 @@ function App() {
   const [docStatus, setDocStatus] = useState(null);
   const [fileStatus, setFileStatus] = useState(null);
   const fileInputRef = useRef(null);
-  const [importTab, setImportTab] = useState("linkedin");
-  const [docUrl, setDocUrl] = useState("");
-  const [docStatus, setDocStatus] = useState(null);
-  const [fileStatus, setFileStatus] = useState(null);
-  const fileInputRef = useRef(null);
   const [newJD, setNewJD] = useState("");
   const [bSub, setBSub] = useState("resume");
   const resultRef = useRef(null);
@@ -619,39 +614,6 @@ function App() {
   const importDoc=async()=>{
     if(!docUrl.trim())return;setDocStatus("loading");
     try{
-      const t=await callClaude("Extract resume information from this Google Doc or URL: "+docUrl+". Parse any resume content you find and return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}");
-      const p=pJ(t);
-      if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
-      setDocStatus("success");
-    }catch{setDocStatus("error");}
-  };
-
-  const importFile=async(file)=>{
-    if(!file)return;
-    setFileStatus("loading");
-    try{
-      const reader=new FileReader();
-      reader.onload=async(e)=>{
-        const text=e.target.result;
-        const t=await callClaude("Extract resume information from this text. Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}\n\nResume text:\n"+text.slice(0,3000));
-        const p=pJ(t);
-        if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
-        setFileStatus("success");
-      };
-      reader.onerror=()=>setFileStatus("error");
-      reader.readAsText(file);
-    }catch{setFileStatus("error");}
-  };
-
-  const handleFileDrop=async(e)=>{
-    e.preventDefault();
-    const file=e.dataTransfer?.files?.[0]||e.target?.files?.[0];
-    if(file)await importFile(file);
-  };
-
-  const importDoc=async()=>{
-    if(!docUrl.trim())return;setDocStatus("loading");
-    try{
       const t=await callClaude("Extract resume details from this URL or Google Doc link: "+docUrl+". Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}");
       const p=pJ(t);
       if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
@@ -676,6 +638,11 @@ function App() {
     reader.readAsText(file);
   };
 
+  const handleFileDrop=async(e)=>{
+    e.preventDefault();
+    const file=e.dataTransfer?.files?.[0]||e.target?.files?.[0];
+    if(file)await importFile(file);
+  };
 
   const rReady=R.name&&R.experience&&R.targetRole;
   const cReady=C.name&&C.company&&C.role&&C.experience;
