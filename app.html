@@ -414,7 +414,7 @@ async function callClaude(prompt, maxT = 1000) {
 function pJ(t){try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch{return null;}}
 
 // ─── ATS ──────────────────────────────────────────────────────────────────────
-function ATSPanel({result,jobDesc}){
+function ATSPanel({result,jobDesc,onImprove}){
   if(!result)return null;
   let score=0;const checks=[];
   const hm=/\d+%|\d+x|\$[\d,]+|\d+\s*(people|team|clients)/i.test(result);
@@ -430,7 +430,8 @@ function ATSPanel({result,jobDesc}){
   score=Math.min(score,100);
   const cls=score>=80?"hi":score>=55?"mi":"lo",col=score>=80?"#3db87a":score>=55?"#f4722b":"#e05555";
   const r=30,circ=2*Math.PI*r,dash=(score/100)*circ;
-  return(<div className="atsp"><div className="atsh"><div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:15,color:"var(--cr)"}}>ATS Score</div><div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>Screening compatibility</div></div><div className="ring"><svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="5"/><circle cx="34" cy="34" r={r} fill="none" stroke={col} strokeWidth="5" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" style={{transition:"stroke-dasharray 1s ease"}}/></svg><div className={`rnum ${cls}`}>{score}</div></div></div><div>{checks.map((c,i)=><div key={i} className="achk"><span>{c.icon}</span><span>{c.t}</span></div>)}</div></div>);
+    const weakChecks = checks.filter(c=>!c.ok).map(c=>c.t).join(", ");
+  return(<div className="atsp"><div className="atsh"><div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:15,color:"var(--cr)"}}>ATS Score</div><div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>Screening compatibility</div></div><div className="ring"><svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="5"/><circle cx="34" cy="34" r={r} fill="none" stroke={col} strokeWidth="5" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" style={{transition:"stroke-dasharray 1s ease"}}/></svg><div className={`rnum ${cls}`}>{score}</div></div></div><div>{checks.map((c,i)=><div key={i} className="achk"><span>{c.icon}</span><span>{c.t}</span></div>)}</div>{weakChecks&&onImprove&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid var(--line)",textAlign:"center"}}><button className="btn bp bsm" onClick={()=>onImprove("ATS",weakChecks)} style={{width:"100%",justifyContent:"center"}}>⚡ Apply ATS Improvements to Resume</button><div style={{fontSize:11,color:"var(--mu2)",marginTop:6}}>Rewrites your resume to fix the issues above</div></div>}</div>);
 }
 
 // ─── TOOL: CAREER POSITIONING ─────────────────────────────────────────────────
@@ -448,7 +449,7 @@ function CareerPositioning(){
 }
 
 // ─── TOOL: RECRUITER SIM ──────────────────────────────────────────────────────
-function RecruiterSim({resumeText}){
+function RecruiterSim({resumeText,onImprove}){
   const [running,setRunning]=useState(false);const [progress,setProgress]=useState(0);const [phase,setPhase]=useState(0);const [done,setDone]=useState(false);const [analysis,setAnalysis]=useState(null);const timer=useRef(null);
   const PHASES=[{t:0,l:"Scanning name & title…"},{t:1.5,l:"Reading most recent role…"},{t:3,l:"Checking company names…"},{t:4,l:"Scanning for numbers…"},{t:5.5,l:"Verdict forming…"}];
   const run=async()=>{
@@ -458,7 +459,7 @@ function RecruiterSim({resumeText}){
   };
   return(<div>{!running&&!done&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>⏱️</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:8}}>6-Second Recruiter Simulation</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Watch how a recruiter's eyes scan your resume. See what gets noticed, what gets skipped, and whether you'd advance.</p><button className="btn bp" onClick={run}>Start Simulation ▶</button></div>)}
   {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{(resumeText||"").split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{(resumeText||"").split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
-  {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"✕ Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button></div>)}</div>)}</div>);
+  {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"✕ Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<div style={{display:"flex",gap:9,flexWrap:"wrap"}}><button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button>{analysis&&onImprove&&<button className="btn bp bsm" onClick={()=>onImprove("6-Second",`What was missed: ${analysis.whatWasMissed?.join(", ")}. First impression: ${analysis.firstImpression}. Eye path issues: recruiter saw ${analysis.eyePath?.join(" then ")}.`)}>⚡ Apply 6-Second Fixes to Resume</button>}</div></div>)}</div>)}</div>);
 }
 
 // ─── TOOL: MARKET COMPARISON ──────────────────────────────────────────────────
@@ -496,7 +497,7 @@ function CoachingMode(){
 }
 
 // ─── TOOL: RECRUITER FEEDBACK ─────────────────────────────────────────────────
-function RecruiterFeedback({resumeText,jobDesc}){
+function RecruiterFeedback({resumeText,jobDesc,onImprove}){
   const [loading,setLoading]=useState(false);const [fb,setFb]=useState(null);
   const analyze=async()=>{setLoading(true);setFb(null);const raw=await callClaude(`Senior recruiter brutal resume review. Return ONLY JSON:\n${resumeText}${jobDesc?`
 JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary":"2-sentence gut reaction","verdict":"3-4 sentence verdict","callbackProbability":"High","callbackReason":"1 sentence","strongBullets":[{"text":"exact bullet","reason":"why it works"}],"weakBullets":[{"text":"exact bullet","reason":"why it fails"}],"topStrengths":[{"label":"title","detail":"specific"}],"criticalFixes":[{"label":"title","detail":"fix"}],"redFlags":[{"label":"flag","detail":"reaction"}],"missingElements":[{"label":"missing","detail":"why matters"}]}`);setFb(pJ(raw));setLoading(false);};
@@ -510,7 +511,7 @@ JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary"
   {fb.topStrengths?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--green)"}}>💪 Strengths</div>{fb.topStrengths.map((s,i)=><div key={i} className="fb-item"><span>✦</span><div><div className="fb-il">{s.label}</div><div className="fb-id">{s.detail}</div></div></div>)}</div>}
   {fb.criticalFixes?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--red)"}}>🔧 Critical Fixes</div>{fb.criticalFixes.map((f,i)=><div key={i} className="fb-item"><span>→</span><div><div className="fb-il">{f.label}</div><div className="fb-id">{f.detail}</div></div></div>)}</div>}
   {fb.missingElements?.length>0&&<div className="fb-sec"><div className="fb-sec-t" style={{color:"var(--blue)"}}>📋 What's Missing</div>{fb.missingElements.map((m,i)=><div key={i} className="fb-item"><span>○</span><div><div className="fb-il">{m.label}</div><div className="fb-id">{m.detail}</div></div></div>)}</div>}
-  <div style={{textAlign:"center",paddingTop:8}}><button className="btn bo bsm" onClick={analyze}>Re-analyze ↺</button></div></div>)}</div>);
+  <div style={{textAlign:"center",paddingTop:8,display:"flex",gap:9,justifyContent:"center",flexWrap:"wrap"}}><button className="btn bo bsm" onClick={analyze}>Re-analyze ↺</button>{fb&&onImprove&&<button className="btn bp bsm" onClick={()=>onImprove("Recruiter",`Grade: ${fb.grade}. Fixes needed: ${fb.criticalFixes?.map(f=>f.label+": "+f.detail).join("; ")||"none"}. Missing: ${fb.missingElements?.map(m=>m.label).join(", ")||"none"}`)}>⚡ Apply Recruiter Fixes to Resume</button>}</div></div>)}</div>);
 }
 
 // ─── TOOL: ROLE IQ ────────────────────────────────────────────────────────────
@@ -559,8 +560,27 @@ function App() {
   const [retailoring, setRetailoring] = useState(false);
   const [result, setResult] = useState(null);
   const [copied, setCopied] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+
+  const downloadResume = () => {
+    if(!result) return;
+    const filename = (localR?.name||R.name||"resume").toLowerCase().replace(/\s+/g,"-");
+    const label = bSub==="resume" ? "resume" : "cover-letter";
+    const date = new Date().toISOString().slice(0,10);
+    const blob = new Blob([result], {type:"text/plain"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${filename}-${label}-${date}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    setDownloaded(true);
+    setTimeout(()=>setDownloaded(false), 2000);
+  };
   const [tone, setTone] = useState("professional");
   const [showATS, setShowATS] = useState(false);
+  const [improving, setImproving] = useState(false);
+  const [improveMsg, setImproveMsg] = useState("");
   const [liUrl, setLiUrl] = useState("");
   const [liStatus, setLiStatus] = useState(null);
   const [importTab, setImportTab] = useState("linkedin");
@@ -605,6 +625,20 @@ function App() {
     try{const t=await callClaude(bSub==="resume"?mRP():mCP());setResult(t);if(!unlocked)setUsage(u=>u+1);}catch{setResult("Error. Please try again.");}
     setLoading(false);
   };
+  const applyImprovements=async(source, feedback)=>{
+    if(!result)return;
+    setImproving(true);
+    setImproveMsg(`Applying ${source} improvements…`);
+    try{
+      const improved = await callClaude(`You are an expert resume writer. Improve this resume based on the following feedback from a ${source} analysis.\n\nFEEDBACK TO ADDRESS:\n${feedback}\n\nCURRENT RESUME:\n${result}\n\nRewrite the resume incorporating all the improvements. Keep the same format and structure but fix every issue mentioned. Return ONLY the improved resume text, no explanation.`);
+      setResult(improved);
+      setImproveMsg("");
+    }catch(e){
+      setImproveMsg("Something went wrong — please try again.");
+    }
+    setImproving(false);
+  };
+
   const retailor=async()=>{
     if(!newJD.trim())return;setRetailoring(true);setShowATS(false);
     try{setResult(await callClaude(bSub==="resume"?mRP(newJD):mCP(newJD)));}catch{}
@@ -941,17 +975,32 @@ function App() {
         </>
       )}
       {loading&&<div className="loading"><div className="spin"/>Generating — this takes about 10 seconds…</div>}
+      {improving&&<div className="loading" style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:10,margin:"0 0 14px"}}><div className="spin"/>{improveMsg||"Applying improvements…"}</div>}
       {result&&!loading&&(
         <div ref={resultRef}>
           <div className="rcard">
             <div className="rhdr"><div className="rtitle">Your {bSub==="resume"?"Resume":"Cover Letter"}</div>
-              <div className="racts"><button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"Copied!":"Copy"}</button><button className="ibtn" onClick={()=>setShowATS(s=>!s)}>{showATS?"Hide ATS":"ATS Score"}</button></div>
+              <div className="racts">
+                  <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>
+                    {copied?"✓ Copied!":"📋 Copy"}
+                  </button>
+                  <button className="ibtn" onClick={downloadResume}>
+                    {downloaded?"✓ Downloaded!":"⬇ Download .txt"}
+                  </button>
+                  <button className="ibtn" onClick={()=>setShowATS(s=>!s)}>
+                    {showATS?"Hide ATS":"📊 ATS Score"}
+                  </button>
+                </div>
+            </div>
+            <div style={{fontSize:11,color:"var(--mu2)",padding:"4px 0 10px",display:"flex",alignItems:"center",gap:6}}>
+              <span>💡</span>
+              <span>Download as .txt → open in Word or Google Docs to format and save different versions</span>
             </div>
             <div className="rbody">{result}</div>
             <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={doRetailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
             {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback and see your market ranking</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all tools · $29</button></div></>}
           </div>
-          {showATS&&<ATSPanel result={result} jobDesc={jdATS}/>}
+          {showATS&&<ATSPanel result={result} jobDesc={jdATS} onImprove={applyImprovements}/>}
           {result&&<div style={{marginTop:16,display:"flex",gap:9,flexWrap:"wrap"}}><button className="btn bo bsm" onClick={()=>setActiveTool("feedback")}>📋 Get Recruiter Feedback →</button><button className="btn bo bsm" onClick={()=>setActiveTool("sim")}>⏱️ Run 6-Sec Test →</button><button className="btn bo bsm" onClick={()=>setActiveTool("market")}>📊 Compare to Market →</button></div>}
         </div>
       )}
@@ -1018,8 +1067,8 @@ function App() {
               </div>
             )}
             {activeTool==="positioning"&&<CareerPositioning/>}
-            {activeTool==="feedback"&&<RecruiterFeedback {...toolProps}/>}
-            {activeTool==="sim"&&<RecruiterSim resumeText={result}/>}
+            {activeTool==="feedback"&&<RecruiterFeedback {...toolProps} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
+            {activeTool==="sim"&&<RecruiterSim resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc}/>}
             {activeTool==="roleiq"&&<RoleIQ/>}
             {activeTool==="coach"&&<CoachingMode/>}
