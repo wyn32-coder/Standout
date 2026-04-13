@@ -7,6 +7,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
   <style>body{margin:0;padding:0;}
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -626,46 +629,70 @@ function App() {
   const importFile=async(file)=>{
     if(!file)return;
     setFileStatus("loading");
-    const reader=new FileReader();
-    reader.onload=async(e)=>{
-      try{
-        const text=e.target.result;
-        console.log("File text preview:", text.slice(0,200));
-        const t=await callClaude("Extract resume details from this text. Return ONLY a JSON object, no markdown, no explanation:\n\n"+text.slice(0,3000)+"\n\nJSON format: {name,jobTitle,email,phone,skills,experience,education,targetRole}");
-        console.log("Claude raw response:", t);
-        // Try multiple parse strategies
-        let p = null;
-        try { p = JSON.parse(t.trim()); } catch(_) {}
-        if(!p) { try { const m=t.match(/\{[\s\S]*\}/); if(m) p=JSON.parse(m[0]); } catch(_) {} }
-        if(!p) {
-          // Build object manually from text if JSON fails
-          p = {
-            name: t.match(/"name"\s*:\s*"([^"]+)"/)?.[1]||"",
-            jobTitle: t.match(/"jobTitle"\s*:\s*"([^"]+)"/)?.[1]||"",
-            email: t.match(/"email"\s*:\s*"([^"]+)"/)?.[1]||"",
-            phone: t.match(/"phone"\s*:\s*"([^"]+)"/)?.[1]||"",
-            skills: t.match(/"skills"\s*:\s*"([^"]+)"/)?.[1]||"",
-            experience: t.match(/"experience"\s*:\s*"([^"]+)"/)?.[1]||"",
-            education: t.match(/"education"\s*:\s*"([^"]+)"/)?.[1]||"",
-            targetRole: t.match(/"targetRole"\s*:\s*"([^"]+)"/)?.[1]||"",
-          };
+
+    try{
+      let text="";
+      const name=file.name.toLowerCase();
+
+      // ── WORD (.docx) ──
+      if(name.endsWith(".docx") || file.type.includes("wordprocessingml")){
+        const arrayBuf = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({arrayBuffer: arrayBuf});
+        text = result.value;
+      }
+      // ── PDF ──
+      else if(name.endsWith(".pdf") || file.type==="application/pdf"){
+        const arrayBuf = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
+        const pages = [];
+        for(let i=1; i<=Math.min(pdf.numPages, 5); i++){
+          const page = await pdf.getPage(i);
+          const tc = await page.getTextContent();
+          pages.push(tc.items.map(item=>item.str).join(" "));
         }
-        console.log("Parsed data:", p);
-        if(p && Object.values(p).some(v=>v)){
-          const merged={...R,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))};
-          console.log("Merged data:", merged);
-          lastImportRef.current=merged;
-          setR(merged);
-          setImportVersion(v=>v+1);
-        }
+        text = pages.join("\n");
+      }
+      // ── PLAIN TEXT / RTF / DOC ──
+      else{
+        text = await new Promise((resolve, reject)=>{
+          const reader = new FileReader();
+          reader.onload = e => resolve(e.target.result);
+          reader.onerror = reject;
+          reader.readAsText(file);
+        });
+      }
+
+      if(!text || text.trim().length < 20){
+        setFileStatus("error");
+        return;
+      }
+
+      // Send to Claude for parsing
+      const t = await callClaude("You are a resume parser. Extract all details from this resume and return ONLY valid JSON with these keys: name, jobTitle, email, phone, skills, experience, education, targetRole. For experience include company names, titles, dates and key achievements. Return ONLY the JSON object, no markdown.\n\nRESUME:\n"+text.slice(0,4000));
+
+      // Robust JSON extraction
+      let p = null;
+      const cleaned = t.replace(/```json|```/g,"").trim();
+      try { p = JSON.parse(cleaned); } catch(_) {}
+      if(!p){ try{ const m=cleaned.match(/\{[\s\S]*\}/); if(m) p=JSON.parse(m[0]); }catch(_){} }
+
+      if(p && Object.values(p).some(v=>v&&v!=="null")){
+        const clean = Object.fromEntries(
+          Object.entries(p).map(([k,v])=>[k, v==="null"||v===null?"":(Array.isArray(v)?v.join(", "):String(v))])
+        );
+        const merged = {...R,...Object.fromEntries(Object.entries(clean).filter(([,v])=>v))};
+        lastImportRef.current = merged;
+        setR(merged);
+        setImportVersion(v=>v+1);
         setFileStatus("success");
-      }catch(err){
-        console.error("Import error:", err);
+      } else {
         setFileStatus("error");
       }
-    };
-    reader.onerror=()=>setFileStatus("error");
-    reader.readAsText(file);
+
+    }catch(err){
+      console.error("Import error:", err);
+      setFileStatus("error");
+    }
   };
 
   const handleFileDrop=async(e)=>{
@@ -841,7 +868,7 @@ function App() {
     <div className="upload-zone" onClick={()=>fileInputRef.current?.click()} onDragOver={e=>e.preventDefault()} onDrop={handleFileDrop}>
       <div className="upload-icon">📄</div>
       <div className="upload-title">Click to upload or drag & drop</div>
-      <div className="upload-sub">.txt, .doc, .docx, .pdf, .rtf — we'll extract your details automatically</div>
+      <div className="upload-sub">.pdf · .docx · .txt · .rtf — all formats supported</div>
     </div>
     {fileStatus==="success"&&<div className="lis ok" style={{marginTop:10}}>✓ Resume imported — scroll down to review and edit your details</div>}
     {fileStatus==="error"&&<div className="lis err" style={{marginTop:10}}>✕ Couldn't read file — try a .txt file or paste manually</div>}
