@@ -7,9 +7,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";</script>
+  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+  <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";</script>
   <style>body{margin:0;padding:0;}
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -670,21 +670,53 @@ function App() {
 
       // ── WORD (.docx) ──
       if(name.endsWith(".docx") || file.type.includes("wordprocessingml")){
-        const arrayBuf = await file.arrayBuffer();
-        const result = await mammoth.extractRawText({arrayBuffer: arrayBuf});
-        text = result.value;
+        try{
+          const arrayBuf = await file.arrayBuffer();
+          if(typeof mammoth !== "undefined"){
+            const result = await mammoth.extractRawText({arrayBuffer: arrayBuf});
+            text = result.value;
+          } else {
+            // mammoth not loaded - fallback to FileReader
+            text = await new Promise((resolve, reject)=>{
+              const reader = new FileReader();
+              reader.onload = e => resolve(e.target.result);
+              reader.onerror = reject;
+              reader.readAsText(file);
+            });
+          }
+        }catch(wordErr){
+          console.error("Word parse error:", wordErr);
+          // Try plain text fallback
+          text = await new Promise((resolve, reject)=>{
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = reject;
+            reader.readAsText(file);
+          });
+        }
       }
       // ── PDF ──
       else if(name.endsWith(".pdf") || file.type==="application/pdf"){
-        const arrayBuf = await file.arrayBuffer();
-        const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
-        const pages = [];
-        for(let i=1; i<=Math.min(pdf.numPages, 5); i++){
-          const page = await pdf.getPage(i);
-          const tc = await page.getTextContent();
-          pages.push(tc.items.map(item=>item.str).join(" "));
+        try{
+          const arrayBuf = await file.arrayBuffer();
+          if(typeof pdfjsLib !== "undefined"){
+            const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
+            const pages = [];
+            for(let i=1; i<=Math.min(pdf.numPages, 5); i++){
+              const page = await pdf.getPage(i);
+              const tc = await page.getTextContent();
+              pages.push(tc.items.map(item=>item.str).join(" "));
+            }
+            text = pages.join("\n");
+          } else {
+            setFileStatus("pdferror");
+            return;
+          }
+        }catch(pdfErr){
+          console.error("PDF parse error:", pdfErr);
+          setFileStatus("pdferror");
+          return;
         }
-        text = pages.join("\n");
       }
       // ── PLAIN TEXT / RTF / DOC ──
       else{
@@ -1086,4 +1118,3 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
-
