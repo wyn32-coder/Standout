@@ -463,8 +463,8 @@ function RecruiterSim({resumeText,onImprove}){
 }
 
 // ─── TOOL: MARKET COMPARISON ──────────────────────────────────────────────────
-function MarketComparison({resumeText,jobDesc,onImprove}){
-  const [role,setRole]=useState("");const [loading,setLoading]=useState(false);const [data,setData]=useState(null);
+function MarketComparison({resumeText,jobDesc,onImprove,targetJobTitle}){
+  const [role,setRole]=useState(targetJobTitle||"");const [loading,setLoading]=useState(false);const [data,setData]=useState(null);
   const analyze=async()=>{
     if(!resumeText||!role.trim())return;setLoading(true);setData(null);
     const raw=await callClaude(`Recruiter comparing resume vs market benchmarks for "${role}". Return ONLY JSON:\nResume: ${resumeText.slice(0,1500)}${jobDesc?`
@@ -545,8 +545,33 @@ JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary"
 
 // ─── TOOL: ROLE IQ ────────────────────────────────────────────────────────────
 function RoleIQ({resumeText,onImprove}){
-  const [sel,setSel]=useState(null);const intel=sel?ROLE_INTEL[sel]:null;
-  return(<div><div className="card"><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Role Intelligence</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>Select your target role — see the exact language, metrics, and framing that recruiters in that function look for</div><div className="ri-grid">{ROLES.map(r=><div key={r.id} className={`ri-role ${sel===r.id?"on":""}`} onClick={()=>setSel(r.id)}><div className="ri-role-icon">{r.icon}</div><div className="ri-role-name">{r.name}</div></div>)}</div></div>
+  const [sel,setSel]=useState(null);
+  const [detecting,setDetecting]=useState(false);
+  const [detected,setDetected]=useState(null);
+  const intel=sel?ROLE_INTEL[sel]:null;
+
+  // Auto-detect role from resume on mount
+  React.useEffect(()=>{
+    if(!resumeText||detected)return;
+    setDetecting(true);
+    callClaude("Based on this resume, which ONE role type best describes this person? Reply with ONLY one of these exact words: ic, manager, director, sales, product, data\n\nResume:\n"+resumeText.slice(0,1500))
+      .then(r=>{
+        const id=r.trim().toLowerCase().replace(/[^a-z]/g,"");
+        const valid=["ic","manager","director","sales","product","data"];
+        if(valid.includes(id)){setDetected(id);setSel(id);}
+        setDetecting(false);
+      })
+      .catch(()=>setDetecting(false));
+  },[resumeText]);
+  return(<div>
+    <div className="card">
+      <div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Role Intelligence</div>
+      <div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>Select your target role to see the exact language, metrics, and framing recruiters look for</div>
+      {detecting&&<div style={{fontSize:13,color:"var(--o)",marginBottom:12,display:"flex",alignItems:"center",gap:8}}><div className="spin"/>Detecting your role type from your resume…</div>}
+      {detected&&!detecting&&<div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,color:"var(--green)"}}>✓ Based on your resume, you look like a <strong>{ROLES.find(r=>r.id===detected)?.name}</strong> profile — optimized below. Not right? Select a different role.</div>}
+      {!resumeText&&<div style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:13,color:"var(--mu)"}}>💡 Generate your resume in Step 2 first — we'll auto-detect your role type</div>}
+      <div className="ri-grid">{ROLES.map(r=><div key={r.id} className={`ri-role ${sel===r.id?"on":""}`} onClick={()=>setSel(r.id)}><div className="ri-role-icon">{r.icon}</div><div className="ri-role-name">{r.name}</div></div>)}</div>
+    </div>
   {intel&&(<div style={{animation:"up .3s ease"}}>
     <div className="g2">
       <div className="card" style={{margin:0}}><div className="fl">Language to Use</div><div>{intel.lang.map((l,i)=><span key={i} className="ri-tag" style={{background:"rgba(91,163,217,.1)",color:"#5ba3d9",borderColor:"rgba(91,163,217,.18)"}}>{l}</span>)}</div></div>
@@ -559,6 +584,16 @@ function RoleIQ({resumeText,onImprove}){
         ⚡ Optimize Resume for {ROLES.find(r=>r.id===sel)?.name} Role
       </button>
       <div style={{fontSize:11,color:"var(--mu2)",marginTop:6,textAlign:"center"}}>Rewrites your resume using {ROLES.find(r=>r.id===sel)?.name} language, metrics, and framing</div>
+      {sel&&<div style={{marginTop:12,paddingTop:12,borderTop:"1px solid var(--line)"}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu2)",marginBottom:8}}>Or optimize for a different role type:</div>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {ROLES.filter(r=>r.id!==sel).map(r=>(
+            <button key={r.id} className="btn bgh bxs" onClick={()=>setSel(r.id)} style={{fontSize:12}}>
+              {r.icon} {r.name}
+            </button>
+          ))}
+        </div>
+      </div>}
     </div>}
     {onImprove&&!resumeText&&<div style={{marginTop:8,fontSize:13,color:"var(--mu)",textAlign:"center",padding:"10px 0"}}>Generate a resume in Step 2 first to enable optimization</div>}
   </div>)}</div>);
@@ -582,6 +617,78 @@ function JobTracker(){
   {modal&&(<div className="modal-ov" onClick={()=>setModal(false)}><div className="modal" onClick={e=>e.stopPropagation()}><div className="modal-title">{edit?"Edit":"Add"} Application</div><div className="g2"><div className="fg"><label className="fl">Company</label><input placeholder="Google" value={form.company} onChange={e=>setForm(p=>({...p,company:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input placeholder="Senior Engineer" value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}/></div></div><div className="fg"><label className="fl">Stage</label><div className="stage-row">{STAGES.map(s=><button key={s} className={`sbtn2 ${form.stage===s?"on":""}`} style={form.stage===s?{background:STAGE_C[s],borderColor:STAGE_C[s]}:{}} onClick={()=>setForm(p=>({...p,stage:s}))}>{s}</button>)}</div></div><div className="fg"><label className="fl">Date Applied</label><input type="date" value={form.date} onChange={e=>setForm(p=>({...p,date:e.target.value}))}/></div><div className="fg"><label className="fl">Notes</label><textarea rows={3} placeholder="How did it go? What did they ask?" value={form.notes} onChange={e=>setForm(p=>({...p,notes:e.target.value}))}/></div><div className="fg"><label className="fl">Resume Version Used</label><input placeholder="e.g. Tech-Focused, Startup tone" value={form.resumeVersion} onChange={e=>setForm(p=>({...p,resumeVersion:e.target.value}))}/></div><div className="mfoot"><button className="btn bgh bsm" onClick={()=>setModal(false)}>Cancel</button>{edit&&<button className="btn bgh bsm" style={{color:"var(--red)"}} onClick={()=>{save2(apps.filter(a=>a.id!==edit));setModal(false);}}>Delete</button>}<button className="btn bp bsm" onClick={saveForm} disabled={!form.company||!form.role}>Save</button></div></div></div>)}</div>);
 }
 
+// ─── TOOL: COVER LETTER ──────────────────────────────────────────────────────
+function CoverLetterTool({R, result, tone, TONES, TONE_I, callClaude}){
+  const [localC, setLocalC] = React.useState({
+    name: R.name||"",
+    company: "",
+    role: R.targetJobTitle||R.targetRole||"",
+    hiringManager: "",
+    experience: result||"",
+    whyCompany: "",
+    jobDesc: R.jobDesc||""
+  });
+  const [clResult, setClResult] = React.useState(null);
+  const [loading, setLoading] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+  const [localTone, setLocalTone] = React.useState(tone||"professional");
+
+  const generate = async() => {
+    setLoading(true); setClResult(null);
+    const prompt = `Expert cover letter writer. Tone: ${TONE_I[localTone]}\n${localC.name} applying to ${localC.company||"[Company]"} for ${localC.role||"[Role]"}. HM: ${localC.hiringManager||"Hiring Manager"}\nResume/Experience: ${(localC.experience||"").slice(0,2000)}\nWhy this company: ${localC.whyCompany||"not specified"}\nJD: ${localC.jobDesc||"not provided"}\n\nWrite a compelling 3-paragraph cover letter:\n- Para 1: Strong hook with most relevant achievement, show excitement for THIS company and role\n- Para 2: 2-3 specific achievements with metrics that directly match what they need\n- Para 3: Confident close with clear next step\nMax 350 words. Sound human, not corporate. Return ONLY the letter.`;
+    try{ setClResult(await callClaude(prompt, 1000)); }catch(e){}
+    setLoading(false);
+  };
+
+  const ready = localC.name && localC.role;
+
+  return(
+    <div className="panel">
+      <div className="panel-header">
+        <div className="panel-step-badge">Step 9 · Do This Last</div>
+        <div className="panel-title">Write Your Cover Letter</div>
+        <div className="panel-sub">Your resume is polished — now generate a perfectly tailored cover letter in seconds. We've pre-filled everything we know about you.</div>
+      </div>
+      {result&&<div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:9,padding:"10px 14px",marginBottom:14,fontSize:13,color:"var(--green)"}}>✓ Pre-filled from your completed resume</div>}
+      {!result&&<div style={{background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:9,padding:"10px 14px",marginBottom:14,fontSize:13,color:"var(--o)"}}>💡 Complete Step 2 first to auto-fill your details here</div>}
+      <div className="card">
+        <div className="fl" style={{marginBottom:14}}>Cover Letter Details</div>
+        <div className="g2">
+          <div className="fg"><label className="fl">Your Name</label><input value={localC.name} onChange={e=>setLocalC(p=>({...p,name:e.target.value}))} placeholder="Your full name"/></div>
+          <div className="fg"><label className="fl">Role You're Applying For</label><input value={localC.role} onChange={e=>setLocalC(p=>({...p,role:e.target.value}))} placeholder="Senior Customer Success Manager"/></div>
+          <div className="fg"><label className="fl">Company Name</label><input value={localC.company} onChange={e=>setLocalC(p=>({...p,company:e.target.value}))} placeholder="Acme Corp"/></div>
+          <div className="fg"><label className="fl">Hiring Manager <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input value={localC.hiringManager} onChange={e=>setLocalC(p=>({...p,hiringManager:e.target.value}))} placeholder="Sarah Chen"/></div>
+        </div>
+        <div className="fg"><label className="fl">Why This Company? <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional but powerful)</span></label><textarea rows={2} value={localC.whyCompany} onChange={e=>setLocalC(p=>({...p,whyCompany:e.target.value}))} placeholder="What specifically excites you about this company or role?"/></div>
+        <div className="fg"><label className="fl">Job Description <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(paste for best results)</span></label><textarea rows={4} value={localC.jobDesc} onChange={e=>setLocalC(p=>({...p,jobDesc:e.target.value}))} placeholder="Paste the job posting here…"/></div>
+        <div className="fg"><label className="fl">Tone</label><div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${localTone===t.id?"on":""}`} onClick={()=>setLocalTone(t.id)}>{t.l}</button>)}</div></div>
+        <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Writing your cover letter…</>:"Generate Cover Letter ✦"}</button>
+      </div>
+      {loading&&<div className="loading"><div className="spin"/>Crafting your cover letter…</div>}
+      {clResult&&!loading&&(
+        <div className="rcard">
+          <div className="rhdr">
+            <div className="rtitle">Your Cover Letter</div>
+            <div className="racts">
+              <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(clResult);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"✓ Copied!":"📋 Copy"}</button>
+              <button className="ibtn" onClick={()=>{const b=new Blob([clResult],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`cover-letter-${(localC.company||"company").toLowerCase().replace(/\s+/g,"-")}.txt`;a.click();URL.revokeObjectURL(u);}}>⬇ Download</button>
+            </div>
+          </div>
+          <div className="rbody">{clResult}</div>
+          <div className="rtbox">
+            <div className="rttitle">Apply for a Different Company</div>
+            <div className="g2" style={{marginBottom:10}}>
+              <div className="fg"><label className="fl">Company</label><input value={localC.company} onChange={e=>setLocalC(p=>({...p,company:e.target.value}))} placeholder="New company name"/></div>
+              <div className="fg"><label className="fl">Role</label><input value={localC.role} onChange={e=>setLocalC(p=>({...p,role:e.target.value}))} placeholder="Role title"/></div>
+            </div>
+            <button className="btn bo bsm" onClick={generate} disabled={loading}>Regenerate →</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const TOOL_STEPS = [
   {id:"positioning",icon:"🎯",num:"1",title:"Define Your Positioning",desc:"5 questions that unlock your career story — what you do, at what scale, and what makes you different.",badge:"Recommended first"},
@@ -592,6 +699,7 @@ const TOOL_STEPS = [
   {id:"roleiq",icon:"🧠",num:"6",title:"Role Intelligence",desc:"The exact language, metrics, and framing that hiring managers in your field actually look for.",badge:null},
   {id:"coach",icon:"🧑‍💼",num:"7",title:"Coaching Mode",desc:"Tell me your biggest win. I'll turn your story into 3 powerful resume bullets.",badge:null},
   {id:"tracker",icon:"🗂️",num:"8",title:"Track Your Applications",desc:"Log applications, track stages, and let AI find patterns in what's getting you interviews.",badge:null},
+  {id:"coverletter",icon:"✉️",num:"9",title:"Write Your Cover Letter",desc:"Auto-filled from your polished resume. One click generates a tailored cover letter for any role.",badge:"Do This Last"},
 ];
 
 function App() {
@@ -636,7 +744,7 @@ function App() {
   const [newJD, setNewJD] = useState("");
   const [bSub, setBSub] = useState("resume");
   const resultRef = useRef(null);
-  const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",jobDesc:"",linkedinUrl:"",portfolioUrl:""});
+  const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",targetJobTitle:"",jobDesc:"",linkedinUrl:"",portfolioUrl:""});
   const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
   // hook widget state
   const [hookInput, setHookInput] = useState("");
@@ -1127,7 +1235,10 @@ ${result}`;
           {bSub==="resume"?(
             <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
               <div className="g2"><div className="fg"><label className="fl">Full Name</label><input placeholder="Alex Johnson" value={localR.name} onChange={e=>setLocalR(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Current Title</label><input placeholder="Senior Marketing Manager" value={localR.jobTitle} onChange={e=>setLocalR(p=>({...p,jobTitle:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input placeholder="alex@email.com" value={localR.email} onChange={e=>setLocalR(p=>({...p,email:e.target.value}))}/></div><div className="fg"><label className="fl">Phone</label><input placeholder="(555) 000-0000" value={localR.phone} onChange={e=>setLocalR(p=>({...p,phone:e.target.value}))}/></div></div>
-              <div className="fg"><label className="fl">Target Role</label><input placeholder="Director of Marketing at a Series B SaaS" value={localR.targetRole} onChange={e=>setLocalR(p=>({...p,targetRole:e.target.value}))}/></div>
+              <div className="g2">
+                <div className="fg"><label className="fl">Target Role / Job Title</label><input placeholder="Senior Customer Success Manager" value={localR.targetRole} onChange={e=>setLocalR(p=>({...p,targetRole:e.target.value}))}/></div>
+                <div className="fg"><label className="fl">Target Job Title <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(for market comparison)</span></label><input placeholder="Director of Customer Success" value={localR.targetJobTitle||""} onChange={e=>setLocalR(p=>({...p,targetJobTitle:e.target.value}))}/></div>
+              </div>
               <div className="fg"><label className="fl">Work Experience</label><div className="fhint" style={{marginBottom:8}}>List your jobs, companies, dates, and what you accomplished. Include numbers where you can.</div><textarea rows={5} placeholder="E.g. Acme Corp, Marketing Manager, 2021–2024 — Grew email list from 10k to 85k, managed $2M ad budget, launched 3 product lines…" value={localR.experience} onChange={e=>setLocalR(p=>({...p,experience:e.target.value}))}/></div>
               <div className="g2"><div className="fg"><label className="fl">Education</label><textarea rows={2} placeholder="Degree, school, year" value={localR.education} onChange={e=>setLocalR(p=>({...p,education:e.target.value}))}/></div><div className="fg"><label className="fl">Skills</label><textarea rows={2} placeholder="Python, HubSpot, SEO…" value={localR.skills} onChange={e=>setLocalR(p=>({...p,skills:e.target.value}))}/></div></div>
               <div className="g2">
@@ -1183,7 +1294,7 @@ ${result}`;
   );
   };
 
-  const toolProps = { resumeText: result, jobDesc: R.jobDesc };
+  const toolProps = { resumeText: result, jobDesc: R.jobDesc, targetJobTitle: R.targetJobTitle||R.targetRole };
 
   const TOOL_PANELS = {
     positioning: { stepNum:"1", title:"Define Your Positioning", sub:"5 questions that extract your career story — what you solve, at what scale, and what makes you different. This shapes everything else." },
@@ -1193,6 +1304,7 @@ ${result}`;
     roleiq:      { stepNum:"6", title:"Role Intelligence",      sub:"The exact language, metrics, and framing that hiring managers in your function look for." },
     coach:       { stepNum:"7", title:"Coaching Mode",          sub:"Tell your career story in plain English. The coach turns it into powerful resume bullets." },
     tracker:     { stepNum:"8", title:"Track Your Applications",sub:"Log every application, track stages, and let AI find patterns in what's getting you interviews." },
+    coverletter: { stepNum:"9", title:"Write Your Cover Letter",sub:"Your resume is polished. Now generate a perfectly tailored cover letter in seconds — auto-filled from everything you've built." },
   };
 
   return (
@@ -1244,10 +1356,11 @@ ${result}`;
             {activeTool==="positioning"&&<CareerPositioning/>}
             {activeTool==="feedback"&&<RecruiterFeedback {...toolProps} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="sim"&&<RecruiterSim resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
-            {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
+            {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc} targetJobTitle={R.targetJobTitle||R.targetRole} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="roleiq"&&<RoleIQ resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="coach"&&<CoachingMode onAddToResume={(txt)=>{addBulletsToResume(txt);setActiveTool("builder");}}/>}
             {activeTool==="tracker"&&<JobTracker/>}
+            {activeTool==="coverletter"&&<CoverLetterTool R={R} result={result} tone={tone} TONES={TONES} TONE_I={TONE_I} callClaude={callClaude}/>}
           </div>
         )}
           </div>
@@ -1261,3 +1374,4 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
