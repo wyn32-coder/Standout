@@ -749,8 +749,37 @@ function App() {
   );
 
   // ── BUILDER TOOL ──
-  const BuilderTool = React.memo(() => {
-  return (
+  const BuilderTool = () => {
+    const [localR, setLocalR] = React.useState({...R});
+    const [localC, setLocalC] = React.useState({...C});
+
+    // Sync FROM parent when import fills fields
+    React.useEffect(()=>{
+      setLocalR({...R});
+    }, [R.name, R.email, R.phone, R.jobTitle, R.experience, R.education,
+        R.skills, R.targetRole, R.linkedinUrl, R.portfolioUrl]);
+
+    React.useEffect(()=>{
+      setLocalC({...C});
+    }, [C.name, C.company, C.role, C.experience, C.whyCompany]);
+
+    // Sync TO parent and generate
+    const doGenerate = () => {
+      setR({...localR});
+      setC({...localC});
+      setTimeout(generate, 30);
+    };
+    const doRetailor = () => {
+      setR({...localR});
+      setC({...localC});
+      setTimeout(retailor, 30);
+    };
+
+    const rReady2 = localR.name && localR.experience && localR.targetRole;
+    const cReady2 = localC.name && localC.company && localC.role && localC.experience;
+    const ready2 = bSub==="resume" ? rReady2 : cReady2;
+
+    return (
     <div className="panel">
       <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back</div>
       <div className="panel-header">
@@ -813,25 +842,25 @@ function App() {
           <div className="card"><div className="fl">Tone</div><div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${tone===t.id?"on":""}`} onClick={()=>setTone(t.id)}>{t.l}</button>)}</div></div>
           {/* Form */}
           {bSub==="resume"?(
-            <div className="card hot" key={`form-${liStatus}-${fileStatus}-${docStatus}`}><div className="fl" style={{marginBottom:14}}>Your Details</div>
-              <div className="g2"><div className="fg"><label className="fl">Full Name</label><input placeholder="Alex Johnson" defaultValue={R.name} onBlur={e=>setR(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Current Title</label><input placeholder="Senior Marketing Manager" defaultValue={R.jobTitle} onBlur={e=>setR(p=>({...p,jobTitle:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input placeholder="alex@email.com" defaultValue={R.email} onBlur={e=>setR(p=>({...p,email:e.target.value}))}/></div><div className="fg"><label className="fl">Phone</label><input placeholder="(555) 000-0000" defaultValue={R.phone} onBlur={e=>setR(p=>({...p,phone:e.target.value}))}/></div></div>
-              <div className="fg"><label className="fl">Target Role</label><input placeholder="Director of Marketing at a Series B SaaS" defaultValue={R.targetRole} onBlur={e=>setR(p=>({...p,targetRole:e.target.value}))}/></div>
-              <div className="fg"><label className="fl">Work Experience</label><div className="fhint" style={{marginBottom:8}}>List your jobs, companies, dates, and what you accomplished. Include numbers where you can.</div><textarea rows={5} placeholder="E.g. Acme Corp, Marketing Manager, 2021–2024 — Grew email list from 10k to 85k, managed $2M ad budget, launched 3 product lines…" defaultValue={R.experience} onBlur={e=>setR(p=>({...p,experience:e.target.value}))}/></div>
-              <div className="g2"><div className="fg"><label className="fl">Education</label><textarea rows={2} placeholder="Degree, school, year" defaultValue={R.education} onBlur={e=>setR(p=>({...p,education:e.target.value}))}/></div><div className="fg"><label className="fl">Skills</label><textarea rows={2} placeholder="Python, HubSpot, SEO…" defaultValue={R.skills} onBlur={e=>setR(p=>({...p,skills:e.target.value}))}/></div></div>
+            <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
+              <div className="g2"><div className="fg"><label className="fl">Full Name</label><input placeholder="Alex Johnson" value={localR.name} onChange={e=>setLocalR(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Current Title</label><input placeholder="Senior Marketing Manager" value={localR.jobTitle} onChange={e=>setLocalR(p=>({...p,jobTitle:e.target.value}))}/></div><div className="fg"><label className="fl">Email</label><input placeholder="alex@email.com" value={localR.email} onChange={e=>setLocalR(p=>({...p,email:e.target.value}))}/></div><div className="fg"><label className="fl">Phone</label><input placeholder="(555) 000-0000" value={localR.phone} onChange={e=>setLocalR(p=>({...p,phone:e.target.value}))}/></div></div>
+              <div className="fg"><label className="fl">Target Role</label><input placeholder="Director of Marketing at a Series B SaaS" value={localR.targetRole} onChange={e=>setLocalR(p=>({...p,targetRole:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Work Experience</label><div className="fhint" style={{marginBottom:8}}>List your jobs, companies, dates, and what you accomplished. Include numbers where you can.</div><textarea rows={5} placeholder="E.g. Acme Corp, Marketing Manager, 2021–2024 — Grew email list from 10k to 85k, managed $2M ad budget, launched 3 product lines…" value={localR.experience} onChange={e=>setLocalR(p=>({...p,experience:e.target.value}))}/></div>
+              <div className="g2"><div className="fg"><label className="fl">Education</label><textarea rows={2} placeholder="Degree, school, year" value={localR.education} onChange={e=>setLocalR(p=>({...p,education:e.target.value}))}/></div><div className="fg"><label className="fl">Skills</label><textarea rows={2} placeholder="Python, HubSpot, SEO…" value={localR.skills} onChange={e=>setLocalR(p=>({...p,skills:e.target.value}))}/></div></div>
               <div className="g2">
-                <div className="fg"><label className="fl">LinkedIn Profile <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://linkedin.com/in/yourname" defaultValue={R.linkedinUrl} onBlur={e=>setR(p=>({...p,linkedinUrl:e.target.value}))}/></div>
-                <div className="fg"><label className="fl">Portfolio / Website <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://yourportfolio.com" defaultValue={R.portfolioUrl} onBlur={e=>setR(p=>({...p,portfolioUrl:e.target.value}))}/></div>
+                <div className="fg"><label className="fl">LinkedIn Profile <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://linkedin.com/in/yourname" value={localR.linkedinUrl} onChange={e=>setLocalR(p=>({...p,linkedinUrl:e.target.value}))}/></div>
+                <div className="fg"><label className="fl">Portfolio / Website <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://yourportfolio.com" value={localR.portfolioUrl} onChange={e=>setLocalR(p=>({...p,portfolioUrl:e.target.value}))}/></div>
               </div>
-              <div className="fg"><label className="fl">Job Description <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional but recommended)</span></label><div className="fhint" style={{marginBottom:8}}>Paste the job description — the AI will match your resume's keywords to it for a better ATS score</div><textarea rows={4} placeholder="Paste the full job posting here…" defaultValue={R.jobDesc} onBlur={e=>setR(p=>({...p,jobDesc:e.target.value}))}/></div>
-              <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Crafting your resume…</>:"Generate Resume ✦"}</button>
+              <div className="fg"><label className="fl">Job Description <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional but recommended)</span></label><div className="fhint" style={{marginBottom:8}}>Paste the job description — the AI will match your resume's keywords to it for a better ATS score</div><textarea rows={4} placeholder="Paste the full job posting here…" value={localR.jobDesc} onChange={e=>setLocalR(p=>({...p,jobDesc:e.target.value}))}/></div>
+              <button className="btn bp bfull" onClick={doGenerate} disabled={loading||!ready2}>{loading?<><div className="spin"/>Crafting your resume…</>:"Generate Resume ✦"}</button>
             </div>
           ):(
-            <div className="card hot" key={`form-${liStatus}-${fileStatus}-${docStatus}`}><div className="fl" style={{marginBottom:14}}>Your Details</div>
-              <div className="g2"><div className="fg"><label className="fl">Your Name</label><input placeholder="Alex Johnson" defaultValue={C.name} onBlur={e=>setC(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Hiring Manager</label><input placeholder="Sarah Chen (optional)" defaultValue={C.hiringManager} onBlur={e=>setC(p=>({...p,hiringManager:e.target.value}))}/></div><div className="fg"><label className="fl">Company</label><input placeholder="Acme Corp" defaultValue={C.company} onBlur={e=>setC(p=>({...p,company:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input placeholder="Senior Product Manager" defaultValue={C.role} onBlur={e=>setC(p=>({...p,role:e.target.value}))}/></div></div>
-              <div className="fg"><label className="fl">Your Relevant Experience</label><textarea rows={4} placeholder="Your most relevant experience and achievements for this specific role" defaultValue={C.experience} onBlur={e=>setC(p=>({...p,experience:e.target.value}))}/></div>
-              <div className="fg"><label className="fl">Why This Company?</label><textarea rows={2} placeholder="What specifically excites you about this company or role?" defaultValue={C.whyCompany} onBlur={e=>setC(p=>({...p,whyCompany:e.target.value}))}/></div>
-              <div className="fg"><label className="fl">Job Description</label><textarea rows={4} placeholder="Paste the job posting here" defaultValue={C.jobDesc} onBlur={e=>setC(p=>({...p,jobDesc:e.target.value}))}/></div>
-              <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Writing your cover letter…</>:"Generate Cover Letter ✦"}</button>
+            <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
+              <div className="g2"><div className="fg"><label className="fl">Your Name</label><input placeholder="Alex Johnson" value={localC.name} onChange={e=>setLocalC(p=>({...p,name:e.target.value}))}/></div><div className="fg"><label className="fl">Hiring Manager</label><input placeholder="Sarah Chen (optional)" value={localC.hiringManager} onChange={e=>setLocalC(p=>({...p,hiringManager:e.target.value}))}/></div><div className="fg"><label className="fl">Company</label><input placeholder="Acme Corp" value={localC.company} onChange={e=>setLocalC(p=>({...p,company:e.target.value}))}/></div><div className="fg"><label className="fl">Role</label><input placeholder="Senior Product Manager" value={localC.role} onChange={e=>setLocalC(p=>({...p,role:e.target.value}))}/></div></div>
+              <div className="fg"><label className="fl">Your Relevant Experience</label><textarea rows={4} placeholder="Your most relevant experience and achievements for this specific role" value={localC.experience} onChange={e=>setLocalC(p=>({...p,experience:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Why This Company?</label><textarea rows={2} placeholder="What specifically excites you about this company or role?" value={localC.whyCompany} onChange={e=>setLocalC(p=>({...p,whyCompany:e.target.value}))}/></div>
+              <div className="fg"><label className="fl">Job Description</label><textarea rows={4} placeholder="Paste the job posting here" value={localC.jobDesc} onChange={e=>setLocalC(p=>({...p,jobDesc:e.target.value}))}/></div>
+              <button className="btn bp bfull" onClick={doGenerate} disabled={loading||!ready2}>{loading?<><div className="spin"/>Writing your cover letter…</>:"Generate Cover Letter ✦"}</button>
             </div>
           )}
         </>
@@ -844,7 +873,7 @@ function App() {
               <div className="racts"><button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"Copied!":"Copy"}</button><button className="ibtn" onClick={()=>setShowATS(s=>!s)}>{showATS?"Hide ATS":"ATS Score"}</button></div>
             </div>
             <div className="rbody">{result}</div>
-            <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={retailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
+            <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={doRetailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
             {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback and see your market ranking</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all tools · $29</button></div></>}
           </div>
           {showATS&&<ATSPanel result={result} jobDesc={jdATS}/>}
@@ -853,7 +882,7 @@ function App() {
       )}
     </div>
   );
-  });
+  };
 
   const toolProps = { resumeText: result, jobDesc: R.jobDesc };
 
@@ -932,4 +961,6 @@ function App() {
 const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.createRoot(rootEl).render(React.createElement(App));
   </script>
 </body>
+</html>
+
 </html>
