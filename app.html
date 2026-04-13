@@ -630,11 +630,39 @@ function App() {
     reader.onload=async(e)=>{
       try{
         const text=e.target.result;
-        const t=await callClaude("Extract ALL resume details from this text. Return ONLY JSON with no markdown: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"full work history with companies dates and achievements\",\"education\":\"\",\"targetRole\":\"\",\"linkedinUrl\":\"\",\"portfolioUrl\":\"\"}\n\nResume text:\n"+text.slice(0,3000));
-        const p=pJ(t);
-        if(p){const merged={...R,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))};lastImportRef.current=merged;setR(merged);setImportVersion(v=>v+1);}
+        console.log("File text preview:", text.slice(0,200));
+        const t=await callClaude("Extract resume details from this text. Return ONLY a JSON object, no markdown, no explanation:\n\n"+text.slice(0,3000)+"\n\nJSON format: {name,jobTitle,email,phone,skills,experience,education,targetRole}");
+        console.log("Claude raw response:", t);
+        // Try multiple parse strategies
+        let p = null;
+        try { p = JSON.parse(t.trim()); } catch(_) {}
+        if(!p) { try { const m=t.match(/\{[\s\S]*\}/); if(m) p=JSON.parse(m[0]); } catch(_) {} }
+        if(!p) {
+          // Build object manually from text if JSON fails
+          p = {
+            name: t.match(/"name"\s*:\s*"([^"]+)"/)?.[1]||"",
+            jobTitle: t.match(/"jobTitle"\s*:\s*"([^"]+)"/)?.[1]||"",
+            email: t.match(/"email"\s*:\s*"([^"]+)"/)?.[1]||"",
+            phone: t.match(/"phone"\s*:\s*"([^"]+)"/)?.[1]||"",
+            skills: t.match(/"skills"\s*:\s*"([^"]+)"/)?.[1]||"",
+            experience: t.match(/"experience"\s*:\s*"([^"]+)"/)?.[1]||"",
+            education: t.match(/"education"\s*:\s*"([^"]+)"/)?.[1]||"",
+            targetRole: t.match(/"targetRole"\s*:\s*"([^"]+)"/)?.[1]||"",
+          };
+        }
+        console.log("Parsed data:", p);
+        if(p && Object.values(p).some(v=>v)){
+          const merged={...R,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))};
+          console.log("Merged data:", merged);
+          lastImportRef.current=merged;
+          setR(merged);
+          setImportVersion(v=>v+1);
+        }
         setFileStatus("success");
-      }catch{setFileStatus("error");}
+      }catch(err){
+        console.error("Import error:", err);
+        setFileStatus("error");
+      }
     };
     reader.onerror=()=>setFileStatus("error");
     reader.readAsText(file);
