@@ -318,6 +318,8 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
   <div id="root"><div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#09101a;color:#f4722b;font-family:sans-serif;font-size:18px;gap:12px"><div style="width:20px;height:20px;border:3px solid rgba(244,114,43,.3);border-top-color:#f4722b;border-radius:50%;animation:spin 0.8s linear infinite"></div>Loading Standout...</div><style>@keyframes spin{to{transform:rotate(360deg)}}</style></div>
   <script type="text/babel" data-presets="react">
 
+const { useState, useEffect, useRef, useCallback } = React;
+
 const STRIPE_LINK = "https://buy.stripe.com/7sYfZh54cfRb3iReAVew800";
 const FREE_LIMIT = 1;
 
