@@ -677,8 +677,35 @@ function App() {
       if(!p){ try{ const m=cleaned.match(/\{[\s\S]*\}/); if(m) p=JSON.parse(m[0]); }catch(_){} }
 
       if(p && Object.values(p).some(v=>v&&v!=="null")){
+        // Deep converter — handles arrays of objects (experience/education entries)
+        const stringify = (v) => {
+          if(!v || v==="null") return "";
+          if(typeof v === "string") return v;
+          if(Array.isArray(v)){
+            return v.map(item=>{
+              if(typeof item === "string") return item;
+              if(typeof item === "object"){
+                // Format job/education entry as readable text
+                const parts = [];
+                if(item.company||item.organization||item.school||item.institution) parts.push(item.company||item.organization||item.school||item.institution);
+                if(item.title||item.position||item.role||item.degree) parts.push(item.title||item.position||item.role||item.degree);
+                if(item.startDate||item.start||item.dates||item.date||item.year) parts.push(item.startDate||item.start||item.dates||item.date||item.year);
+                if(item.endDate||item.end) parts.push("— "+( item.endDate||item.end));
+                const header = parts.join(" | ");
+                const bullets = item.achievements||item.bullets||item.responsibilities||item.description||item.summary||"";
+                const bulletText = Array.isArray(bullets) ? bullets.map(b=>"• "+b).join("\n") : (bullets||"");
+                return header + (bulletText ? "\n"+bulletText : "");
+              }
+              return String(item);
+            }).join("\n\n");
+          }
+          if(typeof v === "object"){
+            return Object.values(v).filter(Boolean).join(", ");
+          }
+          return String(v);
+        };
         const clean = Object.fromEntries(
-          Object.entries(p).map(([k,v])=>[k, v==="null"||v===null?"":(Array.isArray(v)?v.join(", "):String(v))])
+          Object.entries(p).map(([k,v])=>[k, stringify(v)])
         );
         const merged = {...R,...Object.fromEntries(Object.entries(clean).filter(([,v])=>v))};
         lastImportRef.current = merged;
@@ -1010,3 +1037,4 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
