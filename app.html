@@ -496,7 +496,7 @@ const TOOL_STEPS = [
   {id:"tracker",icon:"🗂️",num:"8",title:"Track Your Applications",desc:"Log applications, track stages, and let AI find patterns in what's getting you interviews.",badge:null},
 ];
 
-export default function App() {
+function App() {
   const [activeTool, setActiveTool] = useState(null);
   const [usage, setUsage] = useState(0);
   const [unlocked, setUnlocked] = useState(false);
