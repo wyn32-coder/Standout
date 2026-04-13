@@ -568,7 +568,7 @@ function App() {
   const [newJD, setNewJD] = useState("");
   const [bSub, setBSub] = useState("resume");
   const resultRef = useRef(null);
-  const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",jobDesc:""});
+  const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",jobDesc:"",linkedinUrl:"",portfolioUrl:""});
   const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
   // hook widget state
   const [hookInput, setHookInput] = useState("");
@@ -593,7 +593,7 @@ function App() {
   };
 
   // Builder
-  const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\nName: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume: Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
+  const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\nName: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}${R.linkedinUrl?'|LinkedIn: '+R.linkedinUrl:''}${R.portfolioUrl?'|Portfolio: '+R.portfolioUrl:''}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume including contact links. Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
   const mCP=(jd)=>`Expert cover letter. Tone: ${TONE_I[tone]}\n${C.name}→${C.company} for ${C.role}. HM: ${C.hiringManager||"Hiring Manager"}\nExp: ${C.experience}|Why: ${C.whyCompany}\nJD: ${jd||C.jobDesc||"none"}\n3 paragraphs: hook, 2-3 achievements, close. Under 350 words.`;
   const generate=async()=>{
     if(!canGen)return;setLoading(true);setResult(null);setShowATS(false);setNewJD("");
@@ -607,7 +607,7 @@ function App() {
   };
   const importLI=async()=>{
     if(!liUrl.trim())return;setLiStatus("loading");
-    try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Generate realistic resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","skills":"","experience":"","education":""}`);const p=pJ(t);if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setLiStatus("success");}
+    try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Extract resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","phone":"","skills":"","experience":"","education":"","targetRole":"","linkedinUrl":"${liUrl}","portfolioUrl":""}`);const p=pJ(t);if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setLiStatus("success");}
     catch{setLiStatus("error");}
   };
 
@@ -628,7 +628,7 @@ function App() {
     reader.onload=async(e)=>{
       try{
         const text=e.target.result;
-        const t=await callClaude("Extract resume details from this text. Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}\n\nText:\n"+text.slice(0,3000));
+        const t=await callClaude("Extract ALL resume details from this text. Return ONLY JSON with no markdown: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"full work history with companies dates and achievements\",\"education\":\"\",\"targetRole\":\"\",\"linkedinUrl\":\"\",\"portfolioUrl\":\"\"}\n\nResume text:\n"+text.slice(0,3000));
         const p=pJ(t);
         if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
         setFileStatus("success");
@@ -749,7 +749,8 @@ function App() {
   );
 
   // ── BUILDER TOOL ──
-  const BuilderTool = () => (
+  const BuilderTool = React.memo(() => {
+  return (
     <div className="panel">
       <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back</div>
       <div className="panel-header">
@@ -817,6 +818,10 @@ function App() {
               <div className="fg"><label className="fl">Target Role</label><input placeholder="Director of Marketing at a Series B SaaS" value={R.targetRole} onChange={e=>setR(p=>({...p,targetRole:e.target.value}))}/></div>
               <div className="fg"><label className="fl">Work Experience</label><div className="fhint" style={{marginBottom:8}}>List your jobs, companies, dates, and what you accomplished. Include numbers where you can.</div><textarea rows={5} placeholder="E.g. Acme Corp, Marketing Manager, 2021–2024 — Grew email list from 10k to 85k, managed $2M ad budget, launched 3 product lines…" value={R.experience} onChange={e=>setR(p=>({...p,experience:e.target.value}))}/></div>
               <div className="g2"><div className="fg"><label className="fl">Education</label><textarea rows={2} placeholder="Degree, school, year" value={R.education} onChange={e=>setR(p=>({...p,education:e.target.value}))}/></div><div className="fg"><label className="fl">Skills</label><textarea rows={2} placeholder="Python, HubSpot, SEO…" value={R.skills} onChange={e=>setR(p=>({...p,skills:e.target.value}))}/></div></div>
+              <div className="g2">
+                <div className="fg"><label className="fl">LinkedIn Profile <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://linkedin.com/in/yourname" value={R.linkedinUrl} onChange={e=>setR(p=>({...p,linkedinUrl:e.target.value}))}/></div>
+                <div className="fg"><label className="fl">Portfolio / Website <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional)</span></label><input placeholder="https://yourportfolio.com" value={R.portfolioUrl} onChange={e=>setR(p=>({...p,portfolioUrl:e.target.value}))}/></div>
+              </div>
               <div className="fg"><label className="fl">Job Description <span style={{color:"var(--mu2)",fontWeight:400,textTransform:"none",letterSpacing:0,fontSize:13}}>(optional but recommended)</span></label><div className="fhint" style={{marginBottom:8}}>Paste the job description — the AI will match your resume's keywords to it for a better ATS score</div><textarea rows={4} placeholder="Paste the full job posting here…" value={R.jobDesc} onChange={e=>setR(p=>({...p,jobDesc:e.target.value}))}/></div>
               <button className="btn bp bfull" onClick={generate} disabled={loading||!ready}>{loading?<><div className="spin"/>Crafting your resume…</>:"Generate Resume ✦"}</button>
             </div>
@@ -848,6 +853,7 @@ function App() {
       )}
     </div>
   );
+  });
 
   const toolProps = { resumeText: result, jobDesc: R.jobDesc };
 
