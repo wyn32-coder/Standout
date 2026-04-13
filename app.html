@@ -312,6 +312,50 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+.import-tabs{display:flex;gap:6px;margin-bottom:14px}
+.import-tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--mu);transition:all .18s;font-family:"DM Sans",sans-serif}
+.import-tab.on{background:rgba(244,114,43,.13);border-color:var(--o);color:var(--o)}
+.upload-zone{border:2px dashed rgba(244,114,43,.25);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .18s;background:rgba(244,114,43,.03)}
+.upload-zone:hover{border-color:var(--o);background:rgba(244,114,43,.06)}
+.upload-zone.drag{border-color:var(--o);background:rgba(244,114,43,.1)}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-title{font-size:14px;font-weight:600;color:var(--cr);margin-bottom:4px}
+.upload-sub{font-size:12px;color:var(--mu)}
+.upload-input{display:none}
+
+.import-tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.import-tab{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--mu);transition:all .18s;font-family:"DM Sans",sans-serif}
+.import-tab.on{background:rgba(244,114,43,.13);border-color:var(--o);color:var(--o)}
+.upload-zone{border:2px dashed rgba(244,114,43,.25);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:all .18s;background:rgba(244,114,43,.03)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--o);background:rgba(244,114,43,.06)}
+.upload-input{display:none}
+.upload-icon{font-size:28px;margin-bottom:8px}
+.upload-title{font-size:14px;font-weight:600;color:var(--cr);margin-bottom:4px}
+.upload-sub{font-size:12px;color:var(--mu)}
+
+/* ── SIDEBAR LAYOUT ── */
+.app-layout{display:grid;grid-template-columns:220px 1fr;min-height:calc(100vh - 57px)}
+.sidebar{background:var(--b1);border-right:1px solid var(--line);padding:16px 0;position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto}
+.sidebar::-webkit-scrollbar{width:3px}.sidebar::-webkit-scrollbar-thumb{background:rgba(244,114,43,.3);border-radius:3px}
+.sidebar-label{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mu2);padding:10px 16px 6px}
+.sidebar-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:all .18s;border-left:2px solid transparent;position:relative}
+.sidebar-item:hover{background:rgba(244,114,43,.06);color:var(--cr)}
+.sidebar-item.active{background:rgba(244,114,43,.1);border-left-color:var(--o)}
+.sidebar-item.done-item .sidebar-num{background:var(--green);border-color:var(--green);color:#fff}
+.sidebar-num{width:22px;height:22px;border-radius:50%;background:rgba(244,114,43,.1);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--o);flex-shrink:0}
+.sidebar-item.active .sidebar-num{background:var(--o);border-color:var(--o);color:#fff}
+.sidebar-text{flex:1;min-width:0}
+.sidebar-title{font-size:13px;font-weight:600;color:var(--cr);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-item:not(.active) .sidebar-title{color:var(--mu)}
+.sidebar-item:hover .sidebar-title{color:var(--cr)}
+.sidebar-home{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--mu);transition:color .18s;margin-bottom:4px;border-bottom:1px solid var(--line);padding-bottom:14px}
+.sidebar-home:hover{color:var(--o)}
+.main-content{min-width:0;overflow-x:hidden}
+@media(max-width:760px){
+  .app-layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+}
 </style>
 </head>
 <body>
@@ -410,7 +454,7 @@ function RecruiterSim({resumeText}){
     setAnalysis(pJ(simR));setRunning(false);setDone(true);
   };
   return(<div>{!running&&!done&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>⏱️</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:8}}>6-Second Recruiter Simulation</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Watch how a recruiter's eyes scan your resume. See what gets noticed, what gets skipped, and whether you'd advance.</p><button className="btn bp" onClick={run}>Start Simulation ▶</button></div>)}
-  {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{resumeText.split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{resumeText.split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
+  {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{(resumeText||"").split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{(resumeText||"").split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
   {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"✕ Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button></div>)}</div>)}</div>);
 }
 
@@ -493,7 +537,7 @@ function JobTracker(){
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const TOOL_STEPS = [
-  {id:"positioning",icon:"🎯",num:"1",title:"Define Your Positioning",desc:"5 questions that unlock your career story — what you do, at what scale, and what makes you different.",badge:"Start Here"},
+  {id:"positioning",icon:"🎯",num:"1",title:"Define Your Positioning",desc:"5 questions that unlock your career story — what you do, at what scale, and what makes you different.",badge:"Recommended first"},
   {id:"builder",icon:"✍️",num:"2",title:"Build Your Resume",desc:"Fill in your details and get a full, ATS-optimized resume in seconds.",badge:null},
   {id:"feedback",icon:"📋",num:"3",title:"Get Recruiter Feedback",desc:"A grade, callback probability, and bullet-by-bullet breakdown — exactly how a recruiter reads it.",badge:null},
   {id:"sim",icon:"⏱️",num:"4",title:"Run the 6-Second Test",desc:"See what a recruiter actually notices in the first 6 seconds of scanning your resume.",badge:null},
@@ -516,6 +560,16 @@ function App() {
   const [showATS, setShowATS] = useState(false);
   const [liUrl, setLiUrl] = useState("");
   const [liStatus, setLiStatus] = useState(null);
+  const [importTab, setImportTab] = useState("linkedin");
+  const [docUrl, setDocUrl] = useState("");
+  const [docStatus, setDocStatus] = useState(null);
+  const [fileStatus, setFileStatus] = useState(null);
+  const fileInputRef = useRef(null);
+  const [importTab, setImportTab] = useState("linkedin");
+  const [docUrl, setDocUrl] = useState("");
+  const [docStatus, setDocStatus] = useState(null);
+  const [fileStatus, setFileStatus] = useState(null);
+  const fileInputRef = useRef(null);
   const [newJD, setNewJD] = useState("");
   const [bSub, setBSub] = useState("resume");
   const resultRef = useRef(null);
@@ -561,6 +615,67 @@ function App() {
     try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Generate realistic resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","skills":"","experience":"","education":""}`);const p=pJ(t);if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setLiStatus("success");}
     catch{setLiStatus("error");}
   };
+
+  const importDoc=async()=>{
+    if(!docUrl.trim())return;setDocStatus("loading");
+    try{
+      const t=await callClaude("Extract resume information from this Google Doc or URL: "+docUrl+". Parse any resume content you find and return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}");
+      const p=pJ(t);
+      if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+      setDocStatus("success");
+    }catch{setDocStatus("error");}
+  };
+
+  const importFile=async(file)=>{
+    if(!file)return;
+    setFileStatus("loading");
+    try{
+      const reader=new FileReader();
+      reader.onload=async(e)=>{
+        const text=e.target.result;
+        const t=await callClaude("Extract resume information from this text. Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}\n\nResume text:\n"+text.slice(0,3000));
+        const p=pJ(t);
+        if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+        setFileStatus("success");
+      };
+      reader.onerror=()=>setFileStatus("error");
+      reader.readAsText(file);
+    }catch{setFileStatus("error");}
+  };
+
+  const handleFileDrop=async(e)=>{
+    e.preventDefault();
+    const file=e.dataTransfer?.files?.[0]||e.target?.files?.[0];
+    if(file)await importFile(file);
+  };
+
+  const importDoc=async()=>{
+    if(!docUrl.trim())return;setDocStatus("loading");
+    try{
+      const t=await callClaude("Extract resume details from this URL or Google Doc link: "+docUrl+". Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}");
+      const p=pJ(t);
+      if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+      setDocStatus("success");
+    }catch{setDocStatus("error");}
+  };
+
+  const importFile=async(file)=>{
+    if(!file)return;
+    setFileStatus("loading");
+    const reader=new FileReader();
+    reader.onload=async(e)=>{
+      try{
+        const text=e.target.result;
+        const t=await callClaude("Extract resume details from this text. Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}\n\nText:\n"+text.slice(0,3000));
+        const p=pJ(t);
+        if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+        setFileStatus("success");
+      }catch{setFileStatus("error");}
+    };
+    reader.onerror=()=>setFileStatus("error");
+    reader.readAsText(file);
+  };
+
 
   const rReady=R.name&&R.experience&&R.targetRole;
   const cReady=C.name&&C.company&&C.role&&C.experience;
@@ -634,7 +749,7 @@ function App() {
       {/* JOURNEY */}
       <div className="journey">
         <div className="journey-title">Your path to the offer</div>
-        <div className="journey-sub">Follow these steps in order — each one builds on the last.</div>
+        <div className="journey-sub">Start anywhere — jump between tools in any order. No gatekeeping.</div>
         <div className="steps">
           {TOOL_STEPS.map((step, idx) => {
             const isDone = doneSteps.has(step.id) || (step.id==="builder"&&result);
@@ -685,7 +800,47 @@ function App() {
             {[["resume","📄 Resume"],["cover","✉️ Cover Letter"]].map(([id,l])=><button key={id} className={`btn ${bSub===id?"bp":"bgh"} bsm`} onClick={()=>{setBSub(id);setResult(null);setShowATS(false);}}>{l}</button>)}
           </div>
           {/* LinkedIn */}
-          {bSub==="resume"&&<div className="card"><div className="fl">LinkedIn Import</div><div className="fhint" style={{marginBottom:12}}>Paste your LinkedIn URL to auto-fill all the fields below</div><div className="lirow"><input placeholder="https://linkedin.com/in/yourname" value={liUrl} onChange={e=>{setLiUrl(e.target.value);setLiStatus(null);}}/><button className="btn bp bsm" style={{flexShrink:0}} onClick={importLI} disabled={!liUrl.trim()||liStatus==="loading"}>{liStatus==="loading"?"Importing…":"Import"}</button></div>{liStatus==="success"&&<div className="lis ok">✓ Fields filled below — review and adjust</div>}{liStatus==="error"&&<div className="lis err">✕ Couldn't parse — please fill in manually</div>}{liStatus==="loading"&&<div className="lis ld">Extracting profile data…</div>}</div>}
+          {bSub==="resume"&&<div className="card">
+  <div className="fl" style={{marginBottom:12}}>Import Your Resume</div>
+  <div className="import-tabs">
+    {[["linkedin","🔗 LinkedIn"],["file","📄 Upload File"],["doc","🌐 Google Doc / URL"]].map(([id,label])=>(
+      <button key={id} className={`import-tab ${importTab===id?"on":""}`} onClick={()=>{setImportTab(id);setFileStatus(null);setDocStatus(null);setLiStatus(null);}}>{label}</button>
+    ))}
+  </div>
+  {importTab==="linkedin"&&(<div>
+    <div className="fhint" style={{marginBottom:10}}>Paste your LinkedIn profile URL to auto-fill your details</div>
+    <div className="lirow">
+      <input placeholder="https://linkedin.com/in/yourname" value={liUrl} onChange={e=>{setLiUrl(e.target.value);setLiStatus(null);}}/>
+      <button className="btn bp bsm" style={{flexShrink:0}} onClick={importLI} disabled={!liUrl.trim()||liStatus==="loading"}>{liStatus==="loading"?"Importing…":"Import"}</button>
+    </div>
+    {liStatus==="success"&&<div className="lis ok">✓ Fields filled below — review and adjust</div>}
+    {liStatus==="error"&&<div className="lis err">✕ Couldn't parse — please fill in manually</div>}
+    {liStatus==="loading"&&<div className="lis ld">Extracting profile data…</div>}
+  </div>)}
+  {importTab==="file"&&(<div>
+    <div className="fhint" style={{marginBottom:10}}>Upload a .txt, .doc, or copy-paste your resume as a text file</div>
+    <input ref={fileInputRef} type="file" className="upload-input" accept=".txt,.doc,.docx,.pdf,.rtf" onChange={handleFileDrop}/>
+    <div className="upload-zone" onClick={()=>fileInputRef.current?.click()} onDragOver={e=>e.preventDefault()} onDrop={handleFileDrop}>
+      <div className="upload-icon">📄</div>
+      <div className="upload-title">Click to upload or drag & drop</div>
+      <div className="upload-sub">.txt, .doc, .docx, .pdf, .rtf — we'll extract your details automatically</div>
+    </div>
+    {fileStatus==="success"&&<div className="lis ok" style={{marginTop:10}}>✓ Resume imported — fields filled below</div>}
+    {fileStatus==="error"&&<div className="lis err" style={{marginTop:10}}>✕ Couldn't read file — try a .txt file or paste manually</div>}
+    {fileStatus==="loading"&&<div className="lis ld" style={{marginTop:10}}>Reading your resume…</div>}
+  </div>)}
+  {importTab==="doc"&&(<div>
+    <div className="fhint" style={{marginBottom:10}}>Paste a Google Doc link, Notion page, or any URL with your resume</div>
+    <div className="lirow">
+      <input placeholder="https://docs.google.com/document/d/..." value={docUrl} onChange={e=>{setDocUrl(e.target.value);setDocStatus(null);}}/>
+      <button className="btn bp bsm" style={{flexShrink:0}} onClick={importDoc} disabled={!docUrl.trim()||docStatus==="loading"}>{docStatus==="loading"?"Importing…":"Import"}</button>
+    </div>
+    {docStatus==="success"&&<div className="lis ok">✓ Details extracted — review and adjust below</div>}
+    {docStatus==="error"&&<div className="lis err">✕ Couldn't access that URL — make sure it's set to public</div>}
+    {docStatus==="loading"&&<div className="lis ld">Extracting from document…</div>}
+    <div className="fhint" style={{marginTop:8}}>💡 For Google Docs: File → Share → Anyone with the link can view</div>
+  </div>)}
+</div>}
           {/* Tone */}
           <div className="card"><div className="fl">Tone</div><div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${tone===t.id?"on":""}`} onClick={()=>setTone(t.id)}>{t.l}</button>)}</div></div>
           {/* Form */}
@@ -747,16 +902,37 @@ function App() {
         <nav className="nav">
           <div className="logo" onClick={()=>setActiveTool(null)} style={{cursor:"pointer"}}><div className="logo-dot"/>Standout</div>
           <div className="nav-r">
-            {activeTool&&<button className="btn bgh bsm" onClick={()=>setActiveTool(null)}>← Home</button>}
             {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $29</button>:<div className="nav-pill">✦ Unlimited</div>}
           </div>
         </nav>
 
+        <div className="app-layout">
+          {/* SIDEBAR */}
+          <div className="sidebar">
+            <div className="sidebar-home" onClick={()=>setActiveTool(null)}>
+              🏠 Home
+            </div>
+            <div className="sidebar-label">All Tools</div>
+            {TOOL_STEPS.map(step=>{
+              const isDone = doneSteps.has(step.id)||(step.id==="builder"&&result);
+              return(
+                <div key={step.id} className={`sidebar-item ${activeTool===step.id?"active":""} ${isDone?"done-item":""}`} onClick={()=>setActiveTool(step.id)}>
+                  <div className="sidebar-num">{isDone?"✓":step.num}</div>
+                  <div className="sidebar-text">
+                    <div className="sidebar-title">{step.icon} {step.title}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* MAIN CONTENT */}
+          <div className="main-content">
         {!activeTool && <HomeScreen/>}
         {activeTool==="builder" && <BuilderTool/>}
         {activeTool&&activeTool!=="builder"&&(
           <div className="panel">
-            <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back to all steps</div>
+            <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back to home</div>
             {TOOL_PANELS[activeTool]&&(
               <div className="panel-header">
                 <div className="panel-step-badge">Step {TOOL_PANELS[activeTool].stepNum}</div>
@@ -773,6 +949,8 @@ function App() {
             {activeTool==="tracker"&&<JobTracker/>}
           </div>
         )}
+          </div>
+        </div>
       </div>
     </>
   );
