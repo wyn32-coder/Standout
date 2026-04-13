@@ -564,6 +564,7 @@ function App() {
   const [docUrl, setDocUrl] = useState("");
   const [docStatus, setDocStatus] = useState(null);
   const [fileStatus, setFileStatus] = useState(null);
+  const [importVersion, setImportVersion] = useState(0);
   const fileInputRef = useRef(null);
   const [newJD, setNewJD] = useState("");
   const [bSub, setBSub] = useState("resume");
@@ -607,7 +608,7 @@ function App() {
   };
   const importLI=async()=>{
     if(!liUrl.trim())return;setLiStatus("loading");
-    try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Extract resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","phone":"","skills":"","experience":"","education":"","targetRole":"","linkedinUrl":"${liUrl}","portfolioUrl":""}`);const p=pJ(t);if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setLiStatus("success");}
+    try{const t=await callClaude(`LinkedIn URL: ${liUrl}. Extract resume data. Return ONLY JSON: {"name":"","jobTitle":"","email":"","phone":"","skills":"","experience":"","education":"","targetRole":"","linkedinUrl":"${liUrl}","portfolioUrl":""}`);const p=pJ(t);if(p){setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setImportVersion(v=>v+1);}setLiStatus("success");}
     catch{setLiStatus("error");}
   };
 
@@ -616,7 +617,7 @@ function App() {
     try{
       const t=await callClaude("Extract resume details from this URL or Google Doc link: "+docUrl+". Return ONLY JSON: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"\",\"education\":\"\",\"targetRole\":\"\"}");
       const p=pJ(t);
-      if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+      if(p){setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setImportVersion(v=>v+1);}
       setDocStatus("success");
     }catch{setDocStatus("error");}
   };
@@ -630,7 +631,7 @@ function App() {
         const text=e.target.result;
         const t=await callClaude("Extract ALL resume details from this text. Return ONLY JSON with no markdown: {\"name\":\"\",\"jobTitle\":\"\",\"email\":\"\",\"phone\":\"\",\"skills\":\"\",\"experience\":\"full work history with companies dates and achievements\",\"education\":\"\",\"targetRole\":\"\",\"linkedinUrl\":\"\",\"portfolioUrl\":\"\"}\n\nResume text:\n"+text.slice(0,3000));
         const p=pJ(t);
-        if(p)setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));
+        if(p){setR(prev=>({...prev,...Object.fromEntries(Object.entries(p).filter(([,v])=>v))}));setImportVersion(v=>v+1);}
         setFileStatus("success");
       }catch{setFileStatus("error");}
     };
@@ -750,18 +751,9 @@ function App() {
 
   // ── BUILDER TOOL ──
   const BuilderTool = () => {
-    const [localR, setLocalR] = React.useState({...R});
-    const [localC, setLocalC] = React.useState({...C});
-
-    // Sync FROM parent when import fills fields
-    React.useEffect(()=>{
-      setLocalR({...R});
-    }, [R.name, R.email, R.phone, R.jobTitle, R.experience, R.education,
-        R.skills, R.targetRole, R.linkedinUrl, R.portfolioUrl]);
-
-    React.useEffect(()=>{
-      setLocalC({...C});
-    }, [C.name, C.company, C.role, C.experience, C.whyCompany]);
+    // Initialise from parent R - key prop forces full remount on import
+    const [localR, setLocalR] = React.useState(()=>({...R}));
+    const [localC, setLocalC] = React.useState(()=>({...C}));
 
     // Sync TO parent and generate
     const doGenerate = () => {
@@ -931,7 +923,7 @@ function App() {
           {/* MAIN CONTENT */}
           <div className="main-content">
         {!activeTool && <HomeScreen/>}
-        {activeTool==="builder" && <BuilderTool/>}
+        {activeTool==="builder" && <BuilderTool key={importVersion}/>}
         {activeTool&&activeTool!=="builder"&&(
           <div className="panel">
             <div className="panel-back" onClick={()=>setActiveTool(null)}>← Back to home</div>
@@ -961,6 +953,4 @@ function App() {
 const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.createRoot(rootEl).render(React.createElement(App));
   </script>
 </body>
-</html>
-
 </html>
