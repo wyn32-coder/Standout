@@ -391,11 +391,11 @@ const ROLE_INTEL = {
   data:{lang:["Analytical rigor","Business impact","Stakeholder influence"],metrics:["Model accuracy","Revenue attributed","Pipeline scale"],framing:"Connect technical work to business decisions. Show both depth and impact.",benchmarks:[{t:"Top 10% include",v:"Business decisions changed by analysis and scale of systems built."},{t:"Usually missing",v:"Stakeholder influence — who acted on your work."}]},
 };
 const CP_QS = [
-  {label:"Core Value",title:"What problems do you solve?",sub:"Think about what breaks when you're not around.",hints:["Revenue leakage","Scaling bottlenecks","Technical debt","Customer churn"]},
-  {label:"Scale",title:"What scale have you operated at?",sub:"Team size, budget, ARR, users — be specific.",hints:["$1M–$10M","10–100 people","1M+ users","Enterprise (F500)"]},
-  {label:"Differentiator",title:"What makes you different?",sub:"The thing a competitor candidate doesn't have.",hints:["Domain depth","Technical + business mix","Built from zero","Industry specialist"]},
-  {label:"Signature Win",title:"What's your signature achievement?",sub:"What do you do reliably well?",hints:["Building 0→1","Scaling 1→100","Turnarounds","Revenue growth"]},
-  {label:"Your Story",title:"What's the one-line story of your career?",sub:"If a recruiter spends 10 seconds — what should stick?",hints:["Tech leader turned operator","IC → executive","Generalist with depth","Domain expert"]},
+  {label:"Core Value",title:"What problems do you solve better than anyone?",sub:"Think about what breaks when you're not around. What do people come to you for that they can't get elsewhere?",hints:["Revenue leakage","Scaling chaos","Customer churn","Technical debt","Team performance"]},
+  {label:"Scale & Impact",title:"What's the scale and impact of your work?",sub:"Give me numbers — team size, budget, ARR, users, growth %. Specifics make the difference between a good resume and a great one.",hints:["$1M–$50M budget","10–500 person teams","Enterprise Fortune 500","1M+ users","Series A–C"]},
+  {label:"Differentiator",title:"What do you have that other candidates at your level don't?",sub:"This is your unfair advantage. A combination of skills, an unusual background, a specific domain, a track record others can't match.",hints:["Domain depth + business sense","Built something from zero","Rare technical + leadership mix","Industry specialist","Turned around something broken"]},
+  {label:"Signature Win",title:"What's the achievement you're most proud of?",sub:"The one story you tell in every interview. Include what the situation was, what you did, and what the measurable outcome was.",hints:["Grew revenue/retention by X%","Built team from 0 to N","Launched product that did X","Saved $X or cut costs by X%","Won major client or deal"]},
+  {label:"Career Story",title:"What's the through-line of your career?",sub:"If a recruiter had 10 seconds — what's the one thing that should stick? Your narrative arc, not your job history.",hints:["Operator who builds and scales","IC who grew into strategic leader","Domain expert turned cross-functional leader","Builder who turns chaos into systems","Revenue-focused operator"]},
 ];
 
 async function callClaude(prompt, maxT = 1000) {
@@ -436,38 +436,466 @@ function ATSPanel({result,jobDesc,onImprove}){
 
 // ─── TOOL: CAREER POSITIONING ─────────────────────────────────────────────────
 function CareerPositioning({onPositioningComplete, existingPositioning}){
-  const [step,setStep]=useState(0);const [answers,setAnswers]=useState({});const [cur,setCur]=useState("");const [done,setDone]=useState(false);const [gen,setGen]=useState(false);const [pos,setPos]=useState(null);
-  const q=CP_QS[step];
-  const next=async()=>{
-    if(!cur.trim())return;const na={...answers,[q.label]:cur};setAnswers(na);setCur("");
-    if(step<CP_QS.length-1){setStep(s=>s+1);}
-    else{setDone(true);setGen(true);const raw=await callClaude(`Career positioning from self-assessment. Return ONLY JSON:\n${Object.entries(na).map(([k,v])=>`${k}: ${v}`).join("\n")}\n{"headline":"punchy 10-word positioning","summary":"3-sentence executive summary","uniqueAngle":"1-sentence differentiator","targetRoles":["r1","r2","r3"],"powerPhrases":["p1","p2","p3","p4"]}`);setPos(pJ(raw));setGen(false);}
+  const [targetRole, setTargetRole] = useState("");    // step 0 — what role they want
+  const [roleSubmitted, setRoleSubmitted] = useState(false);
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [cur, setCur] = useState("");
+  const [clarifyQ, setClarifyQ] = useState(null);
+  const [clarifyA, setClarifyA] = useState("");
+  const [checking, setChecking] = useState(false);
+  const [done, setDone] = useState(false);
+  const [gen, setGen] = useState(false);
+  const [genPhase, setGenPhase] = useState("");        // "building" | "validating"
+  const [pos, setPos] = useState(null);
+  const [validation, setValidation] = useState(null); // {role, differentiation, compelling, suggestions}
+  const [refining, setRefining] = useState(false);
+  const [refineInput, setRefineInput] = useState("");
+  const [refineLoading, setRefineLoading] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const q = CP_QS[step];
+
+  // Call parent ONLY when user confirms — not just on generate
+  // (handled in the confirm button)
+
+  // Submit current answer — AI checks if clarification needed
+  const submitAnswer = async() => {
+    if(!cur.trim()) return;
+    setChecking(true);
+    setClarifyQ(null);
+
+    // Ask AI: is this answer specific enough, or does it need one clarifying question?
+    const checkPrompt = `You are a career coach reviewing an answer to: "${q.title}"
+Answer given: "${cur}"
+
+Is this answer specific enough to build strong career positioning? 
+- If YES (has metrics, specifics, or clear context) — reply with just: CLEAR
+- If NO (too vague, missing scale/impact/numbers) — reply with ONE short follow-up question (under 15 words) to get the missing specifics. Just the question, nothing else.`;
+
+    const check = await callClaude(checkPrompt, 200);
+    setChecking(false);
+
+    if(check.trim().toUpperCase().startsWith("CLEAR") || check.trim().length > 80){
+      // Answer is good OR AI gave a long response (treat as clear) — move on
+      proceedWithAnswer(cur, null);
+    } else {
+      // AI has a follow-up question
+      setClarifyQ(check.trim().replace(/^["']|["']$/g,""));
+    }
   };
-  if(done&&gen)return<div className="loading"><div className="spin"/>Building your positioning…</div>;
-  // Call parent when positioning is complete
-  React.useEffect(()=>{ if(pos&&onPositioningComplete) onPositioningComplete(pos); },[pos]);
+
+  // Submit clarification answer and proceed
+  const submitClarification = () => {
+    proceedWithAnswer(cur, clarifyA.trim()||null);
+    setClarifyA("");
+    setClarifyQ(null);
+  };
+
+  // Skip clarification and proceed anyway
+  const skipClarification = () => {
+    proceedWithAnswer(cur, null);
+    setClarifyA("");
+    setClarifyQ(null);
+  };
+
+  const proceedWithAnswer = async(answer, clarification) => {
+    const fullAnswer = clarification ? `${answer} — ${clarification}` : answer;
+    const na = {...answers, [q.label]: fullAnswer};
+    setAnswers(na);
+    setCur("");
+
+    if(step < CP_QS.length - 1){
+      setStep(s=>s+1);
+    } else {
+      // All 5 answered — build positioning then validate
+      setDone(true);
+      setGen(true);
+      setGenPhase("building");
+      const allAnswers = Object.entries(na).map(([k,v])=>`${k}: ${v}`).join("\n");
+
+      // Step 1: Build positioning bridging story → target role
+      const raw = await callClaude(`You are a senior career strategist and executive coach. Build powerful career positioning that bridges this person's story to their target role.
+
+TARGET ROLE: ${targetRole}
+
+THEIR STORY:
+${allAnswers}
+
+Your job: Build positioning that makes them the OBVIOUS choice for "${targetRole}" — not generic positioning, but positioning that speaks directly to what that specific role needs.
+
+Return ONLY valid JSON:
+{
+  "headline": "8-12 word headline that speaks directly to what a ${targetRole} hiring manager needs — use their actual achievements and language",
+  "summary": "2-3 sentences in first person. Their story arc + what they deliver + why it matters for ${targetRole}",
+  "uniqueAngle": "1 sentence — the specific combination of experience/skills/achievements that no other ${targetRole} candidate at this level has",
+  "targetRoles": ["${targetRole}", "adjacent role 2", "adjacent role 3"],
+  "powerPhrases": ["phrase directly relevant to ${targetRole} 1", "phrase 2", "phrase 3", "phrase 4"],
+  "roleConnection": "1 sentence explaining exactly why this positioning makes them compelling for ${targetRole} specifically"
+}
+
+Rules: Be specific. Use their actual language and numbers. The headline must make a ${targetRole} hiring manager say 'I need to talk to this person.'`, 1000);
+
+      const p = pJ(raw);
+
+      // Step 2: Validate it against 3 criteria — AI tells them, doesn't ask
+      setGenPhase("validating");
+      const valRaw = await callClaude(`You are a senior recruiter who hires for "${targetRole}" roles. Evaluate this career positioning.
+
+POSITIONING:
+Headline: ${p?.headline}
+Unique Angle: ${p?.uniqueAngle}
+Summary: ${p?.summary}
+
+TARGET ROLE: ${targetRole}
+
+Evaluate against these 3 criteria. For each give a score (strong/good/needs-work) and 1-2 sentence specific feedback. Also give one concrete suggestion to improve if needed.
+
+Return ONLY valid JSON:
+{
+  "roleAlignment": {"score": "strong|good|needs-work", "feedback": "specific feedback about whether headline speaks to ${targetRole} hiring manager needs", "suggestion": "specific improvement if needed, or null"},
+  "differentiation": {"score": "strong|good|needs-work", "feedback": "does the unique angle genuinely differentiate from other ${targetRole} candidates at this level", "suggestion": "specific improvement if needed, or null"},
+  "compelling": {"score": "strong|good|needs-work", "feedback": "would a ${targetRole} hiring manager find this compelling enough to reach out", "suggestion": "specific improvement if needed, or null"},
+  "overallVerdict": "one sentence — honest overall assessment"
+}`, 600);
+
+      setPos(p);
+      setValidation(pJ(valRaw));
+      setGen(false);
+      setGenPhase("");
+    }
+  };
+
+  if(done&&gen) return(
+    <div style={{padding:"40px 0",textAlign:"center"}}>
+      <div className="spin" style={{width:24,height:24,margin:"0 auto 16px"}}/>
+      <div style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:"var(--cr)",marginBottom:6}}>
+        {genPhase==="building"?"Building your positioning…":"Validating against your target role…"}
+      </div>
+      <div style={{fontSize:13,color:"var(--mu)"}}>
+        {genPhase==="building"?"Bridging your story to "+targetRole:"Checking role alignment, differentiation, and impact…"}
+      </div>
+    </div>
+  );
+
+  // Score color helper
+  const scoreColor = s => s==="strong"?"var(--green)":s==="good"?"var(--o)":"var(--red)";
+  const scoreIcon  = s => s==="strong"?"✅":s==="good"?"⚠️":"🔧";
 
   if(done&&pos)return(<div style={{animation:"up .3s ease"}}>
-    <div style={{background:"rgba(244,114,43,.08)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:20,marginBottom:14}}>
-      <div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Your Positioning ✦ Saved</div>
-      <div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)",lineHeight:1.25,marginBottom:10}}>{pos.headline}</div>
-      <div style={{fontSize:14,color:"rgba(237,232,223,.72)",lineHeight:1.7,marginBottom:14}}>{pos.summary}</div>
-      <div style={{fontSize:13,color:"var(--o)",fontStyle:"italic",marginBottom:10}}>{pos.uniqueAngle}</div>
+
+    {/* Positioning headline */}
+    <div style={{background:"rgba(244,114,43,.08)",border:"2px solid rgba(244,114,43,.3)",borderRadius:14,padding:24,marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Your Positioning — Built for {targetRole}</div>
+      <div style={{fontFamily:"'DM Serif Display',serif",fontSize:24,color:"var(--cr)",lineHeight:1.2,marginBottom:10}}>{pos.headline}</div>
+      <div style={{fontSize:14,color:"rgba(237,232,223,.72)",lineHeight:1.75,marginBottom:10}}>{pos.summary}</div>
+      <div style={{fontSize:13,color:"var(--o)",fontStyle:"italic",borderTop:"1px solid var(--line)",paddingTop:10,marginTop:6}}>{pos.uniqueAngle}</div>
+      {pos.roleConnection&&<div style={{fontSize:12,color:"var(--mu)",marginTop:8,background:"rgba(255,255,255,.03)",borderRadius:6,padding:"8px 10px"}}>🎯 {pos.roleConnection}</div>}
     </div>
+
+    {/* AI Validation — tells them, doesn't ask */}
+    {validation&&<div style={{marginBottom:16}}>
+      <div style={{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--mu2)",marginBottom:10}}>Positioning Validation</div>
+
+      {[
+        {key:"roleAlignment",   label:"Speaks to your target role"},
+        {key:"differentiation", label:"Differentiates you at this level"},
+        {key:"compelling",      label:"Compelling to a hiring manager"},
+      ].map(({key,label})=>{
+        const v = validation[key];
+        if(!v) return null;
+        return(
+          <div key={key} style={{background:"var(--b1)",border:"1px solid var(--line)",borderRadius:10,padding:"14px 16px",marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:6}}>
+              <span style={{fontSize:15}}>{scoreIcon(v.score)}</span>
+              <span style={{fontSize:13,fontWeight:600,color:"var(--cr)",flex:1}}>{label}</span>
+              <span style={{fontSize:11,fontWeight:700,textTransform:"uppercase",letterSpacing:1,color:scoreColor(v.score)}}>{v.score}</span>
+            </div>
+            <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6,marginBottom:v.suggestion?6:0}}>{v.feedback}</div>
+            {v.suggestion&&<div style={{fontSize:12,color:"var(--o)",fontStyle:"italic",borderTop:"1px dashed var(--line)",paddingTop:6,marginTop:6}}>💡 {v.suggestion}</div>}
+          </div>
+        );
+      })}
+
+      {validation.overallVerdict&&<div style={{fontSize:13,color:"var(--mu)",fontStyle:"italic",textAlign:"center",padding:"8px 0"}}>{validation.overallVerdict}</div>}
+    </div>}
+
+    {/* Power phrases + target roles */}
     <div className="g2" style={{marginBottom:14}}>
-      <div className="card" style={{margin:0}}><div className="fl">Target Roles</div>{pos.targetRoles?.map((r,i)=><div key={i} style={{fontSize:14,color:"rgba(237,232,223,.72)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>{r}</div>)}</div>
-      <div className="card" style={{margin:0}}><div className="fl">Power Phrases</div>{pos.powerPhrases?.map((p,i)=><div key={i} style={{fontSize:13,color:"var(--o)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontStyle:"italic"}}>"{p}"</div>)}</div>
+      <div className="card" style={{margin:0}}><div className="fl">Target Roles</div>{pos.targetRoles?.map((r,i)=><div key={i} style={{fontSize:13,color:"rgba(237,232,223,.72)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>{r}</div>)}</div>
+      <div className="card" style={{margin:0}}><div className="fl">Power Phrases</div>{pos.powerPhrases?.map((p,i)=><div key={i} style={{fontSize:12,color:"var(--o)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontStyle:"italic"}}>"{p}"</div>)}</div>
     </div>
-    <div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:10,padding:"12px 16px",marginBottom:14,fontSize:13,color:"var(--green)"}}>
-      ✓ Your positioning is now the anchor for all resume improvements — every tool will preserve your voice and story.
+
+    {/* Refine section */}
+    {!refining&&<div style={{marginBottom:14}}>
+      <button className="btn bgh bsm" style={{width:"100%",justifyContent:"center"}} onClick={()=>setRefining(true)}>
+        ✏️ Refine This Positioning
+      </button>
+    </div>}
+
+    {refining&&<div style={{background:"var(--b1)",border:"1px solid var(--line)",borderRadius:10,padding:16,marginBottom:14,animation:"up .2s ease"}}>
+      <div style={{fontSize:13,fontWeight:600,color:"var(--cr)",marginBottom:4}}>What would you like to strengthen?</div>
+      <div style={{fontSize:12,color:"var(--mu)",marginBottom:10,lineHeight:1.5}}>
+        {validation?.roleAlignment?.suggestion||validation?.differentiation?.suggestion||validation?.compelling?.suggestion
+          ? `The AI suggested: ${[validation?.roleAlignment?.suggestion,validation?.differentiation?.suggestion,validation?.compelling?.suggestion].filter(Boolean)[0]}`
+          : "Tell me what feels off — too generic? Missing a key achievement? Wrong emphasis?"}
+      </div>
+      <textarea rows={3} placeholder="e.g. 'Add my churn reduction metric' or 'Make it more senior-sounding' or 'Emphasize my team leadership more'" value={refineInput} onChange={e=>setRefineInput(e.target.value)}/>
+      <div style={{display:"flex",gap:9,marginTop:10}}>
+        <button className="btn bp bsm" disabled={!refineInput.trim()||refineLoading} onClick={async()=>{
+          setRefineLoading(true);
+          const refined = await callClaude(`Refine this career positioning based on the feedback below. Keep what's working, improve what's not.
+
+CURRENT POSITIONING:
+Headline: ${pos.headline}
+Summary: ${pos.summary}
+Unique Angle: ${pos.uniqueAngle}
+
+TARGET ROLE: ${targetRole}
+REFINEMENT REQUEST: ${refineInput}
+
+Return ONLY valid JSON with same structure:
+{"headline":"improved headline","summary":"improved summary","uniqueAngle":"improved unique angle","targetRoles":${JSON.stringify(pos.targetRoles)},"powerPhrases":${JSON.stringify(pos.powerPhrases)},"roleConnection":"updated role connection"}`, 600);
+          const p = pJ(refined);
+          if(p){
+            // Re-validate
+            const valRaw = await callClaude(`Senior recruiter evaluating refined positioning for "${targetRole}". Same 3-criteria evaluation.
+Headline: ${p.headline} | Unique Angle: ${p.uniqueAngle} | Summary: ${p.summary}
+Return ONLY JSON: {"roleAlignment":{"score":"strong|good|needs-work","feedback":"feedback","suggestion":null},"differentiation":{"score":"...","feedback":"...","suggestion":null},"compelling":{"score":"...","feedback":"...","suggestion":null},"overallVerdict":"one sentence"}`, 400);
+            setPos(p);
+            setValidation(pJ(valRaw));
+          }
+          setRefineLoading(false);
+          setRefining(false);
+          setRefineInput("");
+        }}>
+          {refineLoading?<><div className="spin"/>Refining…</>:"Refine It →"}
+        </button>
+        <button className="btn bgh bsm" onClick={()=>{setRefining(false);setRefineInput("");}}>Cancel</button>
+      </div>
+    </div>}
+
+    {/* Confirm and use */}
+    <div style={{background:"rgba(61,184,122,.06)",border:"1px solid rgba(61,184,122,.18)",borderRadius:10,padding:16,textAlign:"center"}}>
+      <div style={{fontSize:13,color:"rgba(237,232,223,.6)",marginBottom:12,lineHeight:1.5}}>
+        Happy with this? Confirm it as your anchor — every tool will preserve this voice and story.
+      </div>
+      <div style={{display:"flex",gap:9,justifyContent:"center",flexWrap:"wrap"}}>
+        <button className="btn bp bsm" style={{padding:"12px 24px"}} onClick={()=>{
+          onPositioningComplete&&onPositioningComplete(pos, false);
+        }}>✓ Confirm My Positioning</button>
+        <button className="btn bp bsm" style={{padding:"12px 24px",background:"var(--green)"}} onClick={()=>{
+          onPositioningComplete&&onPositioningComplete(pos, true);
+        }}>✓ Confirm & Build My Resume →</button>
+      </div>
+      <div style={{fontSize:11,color:"var(--mu2)",marginTop:8}}>You can always come back and refine this later</div>
     </div>
-    <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
-      <button className="btn bp bsm" onClick={()=>onPositioningComplete&&onPositioningComplete(null,true)}>✍️ Build My Resume From This →</button>
-      <button className="btn bgh bsm" onClick={()=>{setStep(0);setAnswers({});setDone(false);setPos(null);}}>Start Over</button>
-    </div>
-    {Object.entries(answers).map(([k,v])=><div key={k} className="cp-si" style={{marginTop:8}}><div className="cp-siq">{k}</div><div className="cp-sia">{v}</div></div>)}
+
+    <button className="btn bgh bsm" style={{marginTop:10}} onClick={()=>{setStep(0);setAnswers({});setDone(false);setPos(null);setValidation(null);setRoleSubmitted(false);setTargetRole("");}}>Start Over</button>
   </div>);
-  return(<div><div style={{height:3,background:"var(--b1)",borderRadius:3,marginBottom:22,overflow:"hidden"}}><div style={{height:"100%",width:`${(step/CP_QS.length)*100}%`,background:"var(--o)",borderRadius:3,transition:"width .5s ease"}}/></div><div className="cp-q"><div className="cp-qlabel">Question {step+1} of {CP_QS.length} · {q.label}</div><div className="cp-qtitle">{q.title}</div><div className="cp-qsub">{q.sub}</div><div className="cp-hints">{q.hints.map((h,i)=><span key={i} className="cp-hint" onClick={()=>setCur(p=>p?p+", "+h:h)}>{h}</span>)}</div><textarea rows={3} placeholder="Be specific — the more detail, the better…" value={cur} onChange={e=>setCur(e.target.value)}/><div className="cp-nav"><span className="cp-step">Step {step+1} of {CP_QS.length}</span><button className="btn bp bsm" onClick={next} disabled={!cur.trim()}>{step<CP_QS.length-1?"Next →":"Build My Positioning ✦"}</button></div></div></div>);
+  // Step 0 — target role
+  if(!roleSubmitted) return(
+    <div style={{animation:"up .3s ease"}}>
+
+      {/* Hero headline */}
+      <div style={{marginBottom:24}}>
+        <div style={{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:10}}>Step 1 of 9 · The Most Important Step</div>
+        <div style={{fontFamily:"'DM Serif Display',serif",fontSize:28,color:"var(--cr)",lineHeight:1.15,marginBottom:10}}>
+          Your positioning is the anchor for everything.
+        </div>
+        <div style={{fontSize:15,color:"var(--mu)",lineHeight:1.7,marginBottom:14}}>
+          It shapes your resume, your cover letter, and how every AI improvement sounds. Get this right and the rest falls into place.
+        </div>
+
+        {/* Expandable why section */}
+        <div style={{borderRadius:10,border:"1px solid var(--line)",overflow:"hidden",marginBottom:20}}>
+          <button
+            onClick={()=>setWhyOpen(w=>!w)}
+            style={{width:"100%",background:whyOpen?"rgba(244,114,43,.08)":"rgba(255,255,255,.02)",border:"none",padding:"12px 16px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",textAlign:"left",transition:"background .18s"}}
+          >
+            <span style={{fontSize:16}}>🎯</span>
+            <span style={{fontSize:14,fontWeight:600,color:"var(--cr)",flex:1}}>New to positioning? Here's why this is the most important 5 minutes you'll spend</span>
+            <span style={{fontSize:14,color:"var(--o)",transition:"transform .2s",display:"inline-block",transform:whyOpen?"rotate(180deg)":"rotate(0deg)"}}>▾</span>
+          </button>
+
+          {whyOpen&&<div style={{padding:"0 16px 20px",animation:"up .2s ease"}}>
+            <div style={{height:1,background:"var(--line)",margin:"0 0 16px"}}/>
+
+            {/* Why resumes fail */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>Why most resumes don't get callbacks</div>
+              <div style={{fontSize:14,color:"var(--mu)",lineHeight:1.75}}>
+                Most resumes are a history of what you've done — not a case for why you're the right person for a specific role. They describe the past without connecting it to what a hiring manager actually needs. The result is a resume that's accurate but not compelling.
+              </div>
+            </div>
+
+            {/* What positioning does */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>What positioning actually does</div>
+              <div style={{fontSize:14,color:"var(--mu)",lineHeight:1.75}}>
+                Positioning extracts the through-line of your career — what you solve, at what scale, and what makes you different — and connects it directly to the role you want. It becomes the brief every AI tool writes from. Every bullet, every improvement, every cover letter paragraph reinforces the same story.
+              </div>
+            </div>
+
+            {/* Before / After */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:10}}>The difference it makes</div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <div style={{background:"rgba(224,85,85,.06)",border:"1px solid rgba(224,85,85,.2)",borderRadius:8,padding:"12px 14px"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--red)",marginBottom:6}}>Without positioning</div>
+                  <div style={{fontSize:13,color:"rgba(237,232,223,.55)",lineHeight:1.6,fontStyle:"italic"}}>
+                    "Experienced customer success professional with 13 years in the industry seeking a leadership role."
+                  </div>
+                </div>
+                <div style={{background:"rgba(61,184,122,.06)",border:"1px solid rgba(61,184,122,.2)",borderRadius:8,padding:"12px 14px"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--green)",marginBottom:6}}>With positioning</div>
+                  <div style={{fontSize:13,color:"rgba(237,232,223,.82)",lineHeight:1.6,fontStyle:"italic"}}>
+                    "Enterprise CS leader who builds the systems that make retention predictable — not reactive. 13 years at Intuit scaling CS from tribal knowledge to patent-pending AI process."
+                  </div>
+                </div>
+              </div>
+              <div style={{fontSize:12,color:"var(--mu2)",textAlign:"center",marginTop:8}}>Same person. Same experience. Completely different impression.</div>
+            </div>
+
+            {/* What you'll get */}
+            <div style={{background:"rgba(244,114,43,.05)",borderRadius:8,padding:"12px 14px"}}>
+              <div style={{fontSize:12,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>What you'll walk away with</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {[
+                  ["Positioning headline","A punchy 8–12 word statement built specifically for your target role"],
+                  ["Executive summary","2–3 sentences that tell your career story in first person"],
+                  ["Unique angle","The one thing that makes you different from every other candidate at your level"],
+                  ["Power phrases","4 phrases from your actual experience that hiring managers respond to"],
+                ].map(([label,desc],i)=>(
+                  <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start"}}>
+                    <span style={{color:"var(--o)",flexShrink:0,marginTop:1}}>✦</span>
+                    <div>
+                      <span style={{fontSize:13,fontWeight:600,color:"var(--cr)"}}>{label}</span>
+                      <span style={{fontSize:13,color:"var(--mu)"}}> — {desc}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{marginTop:14,fontSize:12,color:"var(--mu2)",textAlign:"center",fontStyle:"italic"}}>
+              This takes ~5 minutes. It's the foundation everything else builds on.
+            </div>
+          </div>}
+        </div>
+      </div>
+
+      {/* Target role input */}
+      <div style={{fontSize:14,fontWeight:600,color:"var(--cr)",marginBottom:6}}>What role are you going after?</div>
+      <div style={{fontSize:13,color:"var(--mu)",marginBottom:10,lineHeight:1.6}}>Be as specific as you can — job title, seniority level, company type. This becomes the lens that shapes your entire positioning.</div>
+      <textarea
+        rows={3}
+        placeholder="e.g. 'Director of Customer Success at a Series B SaaS company' or 'Senior Software Engineer at a high-growth fintech' or 'VP of Marketing at an enterprise software company'"
+        value={targetRole}
+        onChange={e=>setTargetRole(e.target.value)}
+        autoFocus
+      />
+      <div style={{display:"flex",gap:9,marginTop:12,alignItems:"center",flexWrap:"wrap"}}>
+        <button className="btn bp" onClick={()=>{if(targetRole.trim())setRoleSubmitted(true);}} disabled={!targetRole.trim()}>
+          Let's Build Your Positioning →
+        </button>
+        <span style={{fontSize:12,color:"var(--mu2)"}}>5 questions · ~5 minutes</span>
+      </div>
+    </div>
+  );
+
+  return(
+    <div>
+      {/* Target role reminder */}
+      <div style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:8,padding:"8px 14px",marginBottom:16,fontSize:13,display:"flex",alignItems:"center",gap:8}}>
+        <span style={{color:"var(--o)"}}>🎯</span>
+        <span style={{color:"var(--mu)"}}>Building for: </span>
+        <span style={{color:"var(--cr)",fontWeight:500}}>{targetRole}</span>
+        <button style={{marginLeft:"auto",background:"transparent",border:"none",color:"var(--mu2)",fontSize:11,cursor:"pointer",textDecoration:"underline"}} onClick={()=>{setRoleSubmitted(false);setStep(0);setAnswers({});}}>change</button>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{height:3,background:"var(--b1)",borderRadius:3,marginBottom:22,overflow:"hidden"}}>
+        <div style={{height:"100%",width:`${((step+(clarifyQ?0.5:0))/CP_QS.length)*100}%`,background:"var(--o)",borderRadius:3,transition:"width .5s ease"}}/>
+      </div>
+
+      {/* Answered steps summary */}
+      {Object.entries(answers).length>0&&(
+        <div style={{marginBottom:16,display:"flex",flexDirection:"column",gap:6}}>
+          {Object.entries(answers).map(([k,v])=>(
+            <div key={k} className="cp-si">
+              <div className="cp-siq">{k}</div>
+              <div className="cp-sia">{v}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Current question */}
+      <div className="cp-q">
+        <div className="cp-qlabel">Question {step+1} of {CP_QS.length} · {q.label}</div>
+        <div className="cp-qtitle">{q.title}</div>
+        <div className="cp-qsub">{q.sub}</div>
+
+        {/* Hint chips — inspiration only */}
+        {q.hints&&q.hints.length>0&&(
+          <div style={{marginBottom:10}}>
+            <div style={{fontSize:11,color:"var(--mu2)",marginBottom:6}}>Need inspiration? Try one of these or write your own:</div>
+            <div className="cp-hints">
+              {q.hints.map((h,i)=>(
+                <span key={i} className="cp-hint" onClick={()=>setCur(p=>p?p+", "+h:h)}>{h}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Main answer input */}
+        {!clarifyQ&&(
+          <>
+            <textarea
+              rows={4}
+              placeholder="Write in your own words — be as specific as you can. Numbers, names, and outcomes are gold."
+              value={cur}
+              onChange={e=>setCur(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&e.metaKey){e.preventDefault();if(cur.trim()&&!checking)submitAnswer();}}}
+            />
+            <div className="cp-nav">
+              <span className="cp-step">
+                {step+1} of {CP_QS.length}
+                <span style={{color:"var(--mu2)",marginLeft:6,fontSize:11}}>⌘+Enter to submit</span>
+              </span>
+              <button className="btn bp bsm" onClick={submitAnswer} disabled={!cur.trim()||checking}>
+                {checking?<><div className="spin"/>Reviewing…</>:step<CP_QS.length-1?"Next →":"Build My Positioning ✦"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* Clarifying question from AI */}
+        {clarifyQ&&(
+          <div style={{animation:"up .25s ease"}}>
+            <div style={{background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:10,padding:"14px 16px",marginBottom:12}}>
+              <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>🎯 One follow-up</div>
+              <div style={{fontSize:15,color:"var(--cr)",lineHeight:1.6}}>{clarifyQ}</div>
+            </div>
+            <div style={{fontSize:12,color:"var(--mu2)",marginBottom:8}}>Your answer: <em style={{color:"rgba(237,232,223,.5)"}}>"{cur}"</em></div>
+            <textarea
+              rows={3}
+              placeholder="Add the specifics here — or skip if you'd prefer to move on…"
+              value={clarifyA}
+              onChange={e=>setClarifyA(e.target.value)}
+              autoFocus
+            />
+            <div style={{display:"flex",gap:9,marginTop:10}}>
+              <button className="btn bp bsm" onClick={submitClarification}>
+                {step<CP_QS.length-1?"Add & Continue →":"Add & Build Positioning ✦"}
+              </button>
+              <button className="btn bgh bsm" onClick={skipClarification}>Skip this →</button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── TOOL: RECRUITER SIM ──────────────────────────────────────────────────────
@@ -1509,5 +1937,6 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
 
 
