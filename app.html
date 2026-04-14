@@ -435,7 +435,7 @@ function ATSPanel({result,jobDesc,onImprove}){
 }
 
 // ─── TOOL: CAREER POSITIONING ─────────────────────────────────────────────────
-function CareerPositioning(){
+function CareerPositioning({onPositioningComplete, existingPositioning}){
   const [step,setStep]=useState(0);const [answers,setAnswers]=useState({});const [cur,setCur]=useState("");const [done,setDone]=useState(false);const [gen,setGen]=useState(false);const [pos,setPos]=useState(null);
   const q=CP_QS[step];
   const next=async()=>{
@@ -444,7 +444,29 @@ function CareerPositioning(){
     else{setDone(true);setGen(true);const raw=await callClaude(`Career positioning from self-assessment. Return ONLY JSON:\n${Object.entries(na).map(([k,v])=>`${k}: ${v}`).join("\n")}\n{"headline":"punchy 10-word positioning","summary":"3-sentence executive summary","uniqueAngle":"1-sentence differentiator","targetRoles":["r1","r2","r3"],"powerPhrases":["p1","p2","p3","p4"]}`);setPos(pJ(raw));setGen(false);}
   };
   if(done&&gen)return<div className="loading"><div className="spin"/>Building your positioning…</div>;
-  if(done&&pos)return(<div style={{animation:"up .3s ease"}}><div style={{background:"rgba(244,114,43,.08)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:20,marginBottom:14}}><div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Your Positioning</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)",lineHeight:1.25,marginBottom:10}}>{pos.headline}</div><div style={{fontSize:14,color:"rgba(237,232,223,.72)",lineHeight:1.7}}>{pos.summary}</div></div><div className="g2" style={{marginBottom:14}}><div className="card" style={{margin:0}}><div className="fl">Target Roles</div>{pos.targetRoles?.map((r,i)=><div key={i} style={{fontSize:14,color:"rgba(237,232,223,.72)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>{r}</div>)}</div><div className="card" style={{margin:0}}><div className="fl">Power Phrases</div>{pos.powerPhrases?.map((p,i)=><div key={i} style={{fontSize:13,color:"var(--o)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontStyle:"italic"}}>"{p}"</div>)}</div></div>{Object.entries(answers).map(([k,v])=><div key={k} className="cp-si"><div className="cp-siq">{k}</div><div className="cp-sia">{v}</div></div>)}<button className="btn bgh bsm" style={{marginTop:12}} onClick={()=>{setStep(0);setAnswers({});setDone(false);setPos(null);}}>Start Over</button></div>);
+  // Call parent when positioning is complete
+  React.useEffect(()=>{ if(pos&&onPositioningComplete) onPositioningComplete(pos); },[pos]);
+
+  if(done&&pos)return(<div style={{animation:"up .3s ease"}}>
+    <div style={{background:"rgba(244,114,43,.08)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:20,marginBottom:14}}>
+      <div style={{fontSize:11,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Your Positioning ✦ Saved</div>
+      <div style={{fontFamily:"'DM Serif Display',serif",fontSize:22,color:"var(--cr)",lineHeight:1.25,marginBottom:10}}>{pos.headline}</div>
+      <div style={{fontSize:14,color:"rgba(237,232,223,.72)",lineHeight:1.7,marginBottom:14}}>{pos.summary}</div>
+      <div style={{fontSize:13,color:"var(--o)",fontStyle:"italic",marginBottom:10}}>{pos.uniqueAngle}</div>
+    </div>
+    <div className="g2" style={{marginBottom:14}}>
+      <div className="card" style={{margin:0}}><div className="fl">Target Roles</div>{pos.targetRoles?.map((r,i)=><div key={i} style={{fontSize:14,color:"rgba(237,232,223,.72)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)"}}>{r}</div>)}</div>
+      <div className="card" style={{margin:0}}><div className="fl">Power Phrases</div>{pos.powerPhrases?.map((p,i)=><div key={i} style={{fontSize:13,color:"var(--o)",padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,.04)",fontStyle:"italic"}}>"{p}"</div>)}</div>
+    </div>
+    <div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:10,padding:"12px 16px",marginBottom:14,fontSize:13,color:"var(--green)"}}>
+      ✓ Your positioning is now the anchor for all resume improvements — every tool will preserve your voice and story.
+    </div>
+    <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
+      <button className="btn bp bsm" onClick={()=>onPositioningComplete&&onPositioningComplete(null,true)}>✍️ Build My Resume From This →</button>
+      <button className="btn bgh bsm" onClick={()=>{setStep(0);setAnswers({});setDone(false);setPos(null);}}>Start Over</button>
+    </div>
+    {Object.entries(answers).map(([k,v])=><div key={k} className="cp-si" style={{marginTop:8}}><div className="cp-siq">{k}</div><div className="cp-sia">{v}</div></div>)}
+  </div>);
   return(<div><div style={{height:3,background:"var(--b1)",borderRadius:3,marginBottom:22,overflow:"hidden"}}><div style={{height:"100%",width:`${(step/CP_QS.length)*100}%`,background:"var(--o)",borderRadius:3,transition:"width .5s ease"}}/></div><div className="cp-q"><div className="cp-qlabel">Question {step+1} of {CP_QS.length} · {q.label}</div><div className="cp-qtitle">{q.title}</div><div className="cp-qsub">{q.sub}</div><div className="cp-hints">{q.hints.map((h,i)=><span key={i} className="cp-hint" onClick={()=>setCur(p=>p?p+", "+h:h)}>{h}</span>)}</div><textarea rows={3} placeholder="Be specific — the more detail, the better…" value={cur} onChange={e=>setCur(e.target.value)}/><div className="cp-nav"><span className="cp-step">Step {step+1} of {CP_QS.length}</span><button className="btn bp bsm" onClick={next} disabled={!cur.trim()}>{step<CP_QS.length-1?"Next →":"Build My Positioning ✦"}</button></div></div></div>);
 }
 
@@ -706,6 +728,10 @@ function App() {
   const [activeTool, setActiveTool] = useState(null);
   const [usage, setUsage] = useState(0);
   const [unlocked, setUnlocked] = useState(false);
+  // ── POSITIONING STATE — shared anchor for all tools ──
+  const [positioning, setPositioning] = useState(null); // {headline, summary, uniqueAngle, targetRoles, powerPhrases}
+  const [suggestedPos, setSuggestedPos] = useState(null); // auto-suggested from resume
+  const [posConfirmed, setPosConfirmed] = useState(false);
   // builder state
   const [loading, setLoading] = useState(false);
   const [retailoring, setRetailoring] = useState(false);
@@ -769,11 +795,21 @@ function App() {
   };
 
   // Builder
-  const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\nName: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}${R.linkedinUrl?'|LinkedIn: '+R.linkedinUrl:''}${R.portfolioUrl?'|Portfolio: '+R.portfolioUrl:''}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume including contact links. Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
+  const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\n${positioning?`CAREER POSITIONING — THIS IS THE ANCHOR. Preserve this person's unique voice and story throughout:\nHeadline: ${positioning.headline}\nUnique Angle: ${positioning.uniqueAngle}\nPower Phrases to use: ${positioning.powerPhrases?.join(", ")}\nSummary: ${positioning.summary}\n\n`:""}Name: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}${R.linkedinUrl?'|LinkedIn: '+R.linkedinUrl:''}${R.portfolioUrl?'|Portfolio: '+R.portfolioUrl:''}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume. Use the positioning as the spine — every bullet and summary should reinforce this person's unique angle. Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
   const mCP=(jd)=>`Expert cover letter. Tone: ${TONE_I[tone]}\n${C.name}→${C.company} for ${C.role}. HM: ${C.hiringManager||"Hiring Manager"}\nExp: ${C.experience}|Why: ${C.whyCompany}\nJD: ${jd||C.jobDesc||"none"}\n3 paragraphs: hook, 2-3 achievements, close. Under 350 words.`;
   const generate=async()=>{
     if(!canGen)return;setLoading(true);setResult(null);setShowATS(false);setNewJD("");
-    try{const t=await callClaude(bSub==="resume"?mRP():mCP());setResult(t);if(!unlocked)setUsage(u=>u+1);}catch{setResult("Error. Please try again.");}
+    try{
+      const t=await callClaude(bSub==="resume"?mRP():mCP());
+      setResult(t);
+      if(!unlocked)setUsage(u=>u+1);
+      // Auto-suggest positioning if none exists
+      if(!positioning && bSub==="resume" && t){
+        callClaude(`Based on this resume, suggest a career positioning. Return ONLY JSON:\n${t.slice(0,1500)}\n{"headline":"punchy 10-word positioning headline","summary":"2-sentence executive summary in first person","uniqueAngle":"1-sentence differentiator — what makes this person rare","targetRoles":["role1","role2","role3"],"powerPhrases":["phrase1","phrase2","phrase3","phrase4"]}`)
+          .then(raw=>{ const p=pJ(raw); if(p) setSuggestedPos(p); })
+          .catch(()=>{});
+      }
+    }catch{setResult("Error. Please try again.");}
     setLoading(false);
   };
   const addBulletsToResume=(bulletText)=>{
@@ -794,6 +830,10 @@ function App() {
     setImproving(true);
     setImproveMsg(`Applying ${source} improvements…`);
     try{
+      // Build positioning anchor string — protects voice across all improvements
+      const posAnchor = positioning
+        ? `\n\nPROTECTED POSITIONING — This is the person's unique career story. NEVER change or dilute this:\n- Headline: ${positioning.headline}\n- Unique angle: ${positioning.uniqueAngle}\n- Voice/power phrases: ${positioning.powerPhrases?.join(", ")}\n- Summary: ${positioning.summary}\nAll improvements must STRENGTHEN the resume while preserving this positioning exactly.\n`
+        : "";
       let prompt = "";
 
       if(source==="ATS"){
@@ -1262,6 +1302,26 @@ ${result}`;
       {loading&&<div className="loading"><div className="spin"/>Generating — this takes about 10 seconds…</div>}
       {improving&&<div className="loading" style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:10,margin:"0 0 14px"}}><div className="spin"/>{improveMsg||"Applying improvements…"}</div>}
       {!improving&&improveMsg&&<div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:10,padding:"10px 16px",margin:"0 0 14px",fontSize:13,color:"var(--green)",textAlign:"center"}}>{improveMsg}</div>}
+      {positioning&&<div style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:10,padding:"12px 16px",margin:"0 0 14px",display:"flex",alignItems:"flex-start",gap:12}}>
+        <span style={{fontSize:16,flexShrink:0}}>🎯</span>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:3}}>Positioning Anchor Active</div>
+          <div style={{fontSize:13,color:"var(--cr)",fontStyle:"italic",lineHeight:1.5}}>"{positioning.headline}"</div>
+          <div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>{positioning.uniqueAngle}</div>
+        </div>
+        <button className="ibtn" style={{flexShrink:0}} onClick={()=>setActiveTool("positioning")}>Edit</button>
+      </div>}
+      {!positioning&&suggestedPos&&<div style={{background:"rgba(91,163,217,.06)",border:"1px solid rgba(91,163,217,.2)",borderRadius:10,padding:"14px 16px",margin:"0 0 14px"}}>
+        <div style={{fontSize:11,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:"#5ba3d9",marginBottom:8}}>💡 Suggested Positioning — Based on Your Resume</div>
+        <div style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:"var(--cr)",marginBottom:4}}>{suggestedPos.headline}</div>
+        <div style={{fontSize:13,color:"rgba(237,232,223,.65)",marginBottom:12,lineHeight:1.5}}>{suggestedPos.uniqueAngle}</div>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+          <button className="btn bp bsm" onClick={()=>{setPositioning(suggestedPos);setPosConfirmed(true);setSuggestedPos(null);}}>✓ Use This Positioning</button>
+          <button className="btn bgh bsm" onClick={()=>setActiveTool("positioning")}>Customize It →</button>
+          <button className="btn bgh bsm" onClick={()=>setSuggestedPos(null)}>Dismiss</button>
+        </div>
+      </div>}
+      {!improving&&improveMsg&&<div style={{background:"rgba(61,184,122,.08)",border:"1px solid rgba(61,184,122,.2)",borderRadius:10,padding:"10px 16px",margin:"0 0 14px",fontSize:13,color:"var(--green)",textAlign:"center"}}>{improveMsg}</div>}
       {result&&!loading&&(
         <div ref={resultRef}>
           <div className="rcard">
@@ -1326,6 +1386,13 @@ ${result}`;
               🏠 Home
             </div>
             <div className="sidebar-label">All Tools</div>
+            {positioning&&<div style={{margin:"0 10px 8px",background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:8,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setActiveTool("positioning")}>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>🎯 Your Positioning</div>
+              <div style={{fontSize:12,color:"var(--cr)",fontStyle:"italic",lineHeight:1.4,fontFamily:"'DM Serif Display',serif"}}>"{positioning.headline}"</div>
+            </div>}
+            {!positioning&&<div style={{margin:"0 10px 8px",background:"rgba(244,114,43,.04)",border:"1px dashed rgba(244,114,43,.2)",borderRadius:8,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setActiveTool("positioning")}>
+              <div style={{fontSize:11,color:"var(--mu)",lineHeight:1.4}}>🎯 <span style={{color:"var(--o)"}}>Define your positioning</span> — sets the anchor for your entire resume</div>
+            </div>}
             {TOOL_STEPS.map(step=>{
               const isDone = doneSteps.has(step.id)||(step.id==="builder"&&result);
               return(
@@ -1353,7 +1420,7 @@ ${result}`;
                 <div className="panel-sub">{TOOL_PANELS[activeTool].sub}</div>
               </div>
             )}
-            {activeTool==="positioning"&&<CareerPositioning/>}
+            {activeTool==="positioning"&&<CareerPositioning existingPositioning={positioning} onPositioningComplete={(pos,gotoBuilder)=>{if(pos)setPositioning(pos);if(gotoBuilder)setActiveTool("builder");}}/>}
             {activeTool==="feedback"&&<RecruiterFeedback {...toolProps} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="sim"&&<RecruiterSim resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="market"&&<MarketComparison resumeText={result} jobDesc={R.jobDesc} targetJobTitle={R.targetJobTitle||R.targetRole} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
@@ -1374,4 +1441,5 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
 
