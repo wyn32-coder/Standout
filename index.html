@@ -434,6 +434,16 @@
     document.getElementById('demo-btn').disabled = false;
     const el = document.getElementById('demo-result');
     if (!data.versions) { el.style.display = 'none'; return; }
+
+    // Save to localStorage so app can pick it up after purchase
+    try {
+      localStorage.setItem('standout_demo_bullets', JSON.stringify({
+        original,
+        versions: data.versions,
+        timestamp: Date.now()
+      }));
+    } catch(e) {}
+
     el.innerHTML = `
       <div class="demo-original">"${original}"</div>
       ${data.versions.map(v => `
@@ -447,7 +457,8 @@
         </div>
       `).join('')}
       <div class="demo-cta">
-        <p>Want the full platform? Build your resume, get recruiter feedback, and see your market ranking.</p>
+        <p style="font-size:14px;color:var(--mu);margin-bottom:6px">These bullets are saved — get Standout and add them directly to your resume.</p>
+        <p style="font-size:12px;color:var(--mu2);margin-bottom:14px">Build your full resume, get recruiter feedback, see your market ranking, and more.</p>
         <a href="#pricing" class="btn-primary" style="display:inline-flex">⭐ Get Founder Pricing — $29 →</a>
       </div>
     `;
