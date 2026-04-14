@@ -728,6 +728,9 @@ function App() {
   const [activeTool, setActiveTool] = useState(null);
   const [usage, setUsage] = useState(0);
   const [unlocked, setUnlocked] = useState(false);
+  // ── DEMO BULLETS — carried over from landing page ──
+  const [demoBullets, setDemoBullets] = useState(null);
+  const [demoDismissed, setDemoDismissed] = useState(false);
   // ── POSITIONING STATE — shared anchor for all tools ──
   const [positioning, setPositioning] = useState(null); // {headline, summary, uniqueAngle, targetRoles, powerPhrases}
   const [suggestedPos, setSuggestedPos] = useState(null); // auto-suggested from resume
@@ -778,7 +781,20 @@ function App() {
   const [hookLoading, setHookLoading] = useState(false);
   const [hookResult, setHookResult] = useState(null);
 
-  useEffect(()=>{if(new URLSearchParams(window.location.search).get("unlocked")==="true")setUnlocked(true);},[]);
+  useEffect(()=>{
+    if(new URLSearchParams(window.location.search).get("unlocked")==="true") setUnlocked(true);
+    // Check for demo bullets saved from landing page
+    try{
+      const saved = localStorage.getItem("standout_demo_bullets");
+      if(saved){
+        const parsed = JSON.parse(saved);
+        // Only use if saved within last 24 hours
+        if(parsed && Date.now() - parsed.timestamp < 86400000){
+          setDemoBullets(parsed);
+        }
+      }
+    }catch(e){}
+  },[]);
   useEffect(()=>{if(result&&resultRef.current)resultRef.current.scrollIntoView({behavior:"smooth",block:"start"});},[result]);
 
   const canGen = unlocked || usage < FREE_LIMIT;
@@ -1108,6 +1124,51 @@ ${result}`;
         </div>
       </div>
 
+      {/* DEMO BULLETS WELCOME BANNER */}
+      {demoBullets&&!demoDismissed&&(
+        <div style={{maxWidth:680,margin:"0 auto 24px",padding:"0 24px"}}>
+          <div style={{background:"linear-gradient(135deg,var(--b1),rgba(244,114,43,.08))",border:"2px solid rgba(244,114,43,.3)",borderRadius:14,padding:24,position:"relative"}}>
+            <button onClick={()=>{setDemoDismissed(true);localStorage.removeItem("standout_demo_bullets");}} style={{position:"absolute",top:12,right:12,background:"transparent",border:"none",color:"var(--mu2)",fontSize:18,cursor:"pointer",lineHeight:1}}>✕</button>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>✦ Welcome to Standout — Your Demo Bullets Are Ready</div>
+            <div style={{fontFamily:"'DM Serif Display',serif",fontSize:18,color:"var(--cr)",marginBottom:4}}>You already transformed:</div>
+            <div style={{fontSize:13,color:"var(--mu2)",fontStyle:"italic",marginBottom:14}}>"{demoBullets.original}"</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
+              {demoBullets.versions?.map((v,i)=>(
+                <div key={i} style={{background:"var(--b2)",borderRadius:8,padding:"10px 14px",borderLeft:"3px solid var(--o)"}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>{v.label}</div>
+                  <div style={{fontSize:13,color:"var(--cr)",lineHeight:1.6}}>{v.text}</div>
+                </div>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:9,flexWrap:"wrap"}}>
+              <button className="btn bp bsm" onClick={()=>{
+                // Add best bullet (Impact-Forward) to experience field
+                const best = demoBullets.versions?.find(v=>v.label==="Impact-Forward")||demoBullets.versions?.[0];
+                if(best){
+                  setR(prev=>({...prev,experience:prev.experience?prev.experience+"\n\n• "+best.text:"• "+best.text}));
+                  setImportVersion(v=>v+1);
+                }
+                setDemoDismissed(true);
+                localStorage.removeItem("standout_demo_bullets");
+                setActiveTool("builder");
+              }}>⚡ Add Best Bullet to Resume →</button>
+              <button className="btn bgh bsm" onClick={()=>{
+                // Add all bullets
+                const allText = demoBullets.versions?.map(v=>"• "+v.text).join("\n");
+                if(allText){
+                  setR(prev=>({...prev,experience:prev.experience?prev.experience+"\n\n"+allText:allText}));
+                  setImportVersion(v=>v+1);
+                }
+                setDemoDismissed(true);
+                localStorage.removeItem("standout_demo_bullets");
+                setActiveTool("builder");
+              }}>Add All 3 Bullets →</button>
+              <button className="btn bgh bsm" onClick={()=>{setDemoDismissed(true);localStorage.removeItem("standout_demo_bullets");}}>Dismiss</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* HOOK WIDGET — Bullet Transformer */}
       <div className="hook">
         <div className="hook-card">
@@ -1138,14 +1199,21 @@ ${result}`;
                 <div key={i} className="hook-ver">
                   <div className="hook-ver-label">
                     <span>{v.label}</span>
-                    <button className="ibtn" onClick={()=>navigator.clipboard.writeText(v.text)}>Copy</button>
+                    <div style={{display:"flex",gap:6}}>
+                      <button className="ibtn" onClick={()=>{
+                        setR(prev=>({...prev,experience:prev.experience?prev.experience+"\n\n• "+v.text:"• "+v.text}));
+                        setImportVersion(n=>n+1);
+                        setActiveTool("builder");
+                      }}>+ Add to Resume</button>
+                      <button className="ibtn" onClick={()=>navigator.clipboard.writeText(v.text)}>Copy</button>
+                    </div>
                   </div>
                   <div className="hook-ver-text">{v.text}</div>
                   <div className="hook-ver-why">{v.why}</div>
                 </div>
               ))}
-              <div style={{marginTop:16,textAlign:"center"}}>
-                <p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Ready to build your full resume?</p>
+              <div style={{marginTop:16,padding:"14px 0 0",borderTop:"1px solid var(--line)",textAlign:"center"}}>
+                <p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Build your full resume around these bullets</p>
                 <button className="btn bp" onClick={()=>setActiveTool("builder")}>Build My Full Resume →</button>
               </div>
             </div>
