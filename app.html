@@ -1209,6 +1209,7 @@ function App() {
     setTimeout(()=>setDownloaded(false), 2000);
   };
   const [tone, setTone] = useState("professional");
+  const [toningUp, setToningUp] = useState(false); // live tone switch in progress
   const [showATS, setShowATS] = useState(false);
   const [improving, setImproving] = useState(false);
   const [improveMsg, setImproveMsg] = useState("");
@@ -1264,6 +1265,20 @@ function App() {
   // Builder
   const mRP=(jd)=>`Expert resume writer. Tone: ${TONE_I[tone]}\n${positioning?`CAREER POSITIONING — THIS IS THE ANCHOR. Preserve this person's unique voice and story throughout:\nHeadline: ${positioning.headline}\nUnique Angle: ${positioning.uniqueAngle}\nPower Phrases to use: ${positioning.powerPhrases?.join(", ")}\nSummary: ${positioning.summary}\n\n`:""}Name: ${R.name}|${R.jobTitle}|${R.email} ${R.phone}${R.linkedinUrl?'|LinkedIn: '+R.linkedinUrl:''}${R.portfolioUrl?'|Portfolio: '+R.portfolioUrl:''}\nTarget: ${R.targetRole}\nExp: ${R.experience}\nEdu: ${R.education}|Skills: ${R.skills}\nJD: ${jd||R.jobDesc||"none"}\nWrite complete ATS-optimized resume. Use the positioning as the spine — every bullet and summary should reinforce this person's unique angle. Summary, Experience (bullets with verbs + metrics), Education, Skills.`;
   const mCP=(jd)=>`Expert cover letter. Tone: ${TONE_I[tone]}\n${C.name}→${C.company} for ${C.role}. HM: ${C.hiringManager||"Hiring Manager"}\nExp: ${C.experience}|Why: ${C.whyCompany}\nJD: ${jd||C.jobDesc||"none"}\n3 paragraphs: hook, 2-3 achievements, close. Under 350 words.`;
+  const switchTone = async(newTone) => {
+    if(!result || newTone === tone) return;
+    setTone(newTone);
+    setToningUp(true);
+    try{
+      const improved = await callClaude(
+        `Rewrite this resume in a ${TONE_I[newTone]} tone. Keep ALL content, companies, dates, metrics, and achievements identical. Only change the language style and voice.\n\nCurrent resume:\n${result}\n\nReturn ONLY the rewritten resume.`,
+        1500
+      );
+      setResult(improved);
+    }catch(e){}
+    setToningUp(false);
+  };
+
   const generate=async()=>{
     if(!canGen)return;setLoading(true);setResult(null);setShowATS(false);setNewJD("");
     try{
@@ -1626,10 +1641,16 @@ ${result}`;
           <div className="hook-label">Try it free · No signup</div>
           <div className="hook-title">Turn a weak bullet into 3 powerful ones</div>
           <div className="hook-sub">Paste any sentence from your resume. See the difference instantly.</div>
-          <div style={{marginBottom:12}}>
-            <label className="fl">Role Type</label>
-            <div style={{display:"flex",gap:7,flexWrap:"wrap",marginBottom:14}}>
-              {ROLES.map(r=><button key={r.id} className={`tchip ${hookRole===r.id?"on":""}`} onClick={()=>setHookRole(r.id)}>{r.icon} {r.name}</button>)}
+          <div style={{marginBottom:12,display:"flex",alignItems:"center",gap:10}}>
+            <label style={{fontSize:12,fontWeight:600,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu2)",flexShrink:0}}>Role</label>
+            <div style={{position:"relative",flex:1}}>
+              <select value={hookRole} onChange={e=>setHookRole(e.target.value)}
+                style={{width:"100%",appearance:"none",WebkitAppearance:"none",background:"var(--b1)",
+                  border:"1px solid rgba(244,114,43,.18)",borderRadius:8,padding:"8px 32px 8px 12px",
+                  color:"var(--cr)",fontFamily:"'DM Sans',sans-serif",fontSize:13,cursor:"pointer",outline:"none"}}>
+                {ROLES.map(r=><option key={r.id} value={r.id}>{r.icon} {r.name}</option>)}
+              </select>
+              <span style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",color:"var(--o)",pointerEvents:"none",fontSize:11}}>▾</span>
             </div>
           </div>
           <div className="hook-input-wrap">
@@ -1789,7 +1810,13 @@ ${result}`;
   </div>)}
 </div>}
           {/* Tone */}
-          <div className="card"><div className="fl">Tone</div><div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${tone===t.id?"on":""}`} onClick={()=>setTone(t.id)}>{t.l}</button>)}</div></div>
+          <div className="card">
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10,flexWrap:"wrap",gap:6}}>
+              <div className="fl" style={{margin:0}}>Tone</div>
+              <div style={{fontSize:12,color:"var(--o)",fontStyle:"italic"}}>{TONE_I[tone]}</div>
+            </div>
+            <div className="trow">{TONES.map(t=><button key={t.id} className={`tchip ${tone===t.id?"on":""}`} onClick={()=>setTone(t.id)}>{t.l}</button>)}</div>
+          </div>
           {/* Form */}
           {bSub==="resume"?(
             <div className="card hot"><div className="fl" style={{marginBottom:14}}>Your Details</div>
@@ -1844,18 +1871,38 @@ ${result}`;
       {result&&!loading&&(
         <div ref={resultRef}>
           <div className="rcard">
-            <div className="rhdr"><div className="rtitle">Your {bSub==="resume"?"Resume":"Cover Letter"}</div>
+            <div className="rhdr">
+              <div className="rtitle">Your {bSub==="resume"?"Resume":"Cover Letter"}</div>
               <div className="racts">
-                  <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>
-                    {copied?"✓ Copied!":"📋 Copy"}
-                  </button>
-                  <button className="ibtn" onClick={downloadResume}>
-                    {downloaded?"✓ Downloaded!":"⬇ Download .txt"}
-                  </button>
-                  <button className="ibtn" onClick={()=>setShowATS(s=>!s)}>
-                    {showATS?"Hide ATS":"📊 ATS Score"}
-                  </button>
+                <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>
+                  {copied?"✓ Copied!":"📋 Copy"}
+                </button>
+                <button className="ibtn" onClick={downloadResume}>
+                  {downloaded?"✓ Downloaded!":"⬇ Download .txt"}
+                </button>
+                <button className="ibtn" onClick={()=>setShowATS(s=>!s)}>
+                  {showATS?"Hide ATS":"📊 ATS Score"}
+                </button>
+              </div>
+            </div>
+            {/* Live tone switcher */}
+            <div style={{marginBottom:12,paddingBottom:12,borderBottom:"1px solid var(--line)"}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+                <span style={{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu2)",flexShrink:0}}>Switch tone:</span>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap",flex:1}}>
+                  {TONES.map(t=>(
+                    <button key={t.id}
+                      className={`tchip ${tone===t.id?"on":""}`}
+                      style={toningUp&&tone===t.id?{opacity:.6}:{}}
+                      onClick={()=>result?switchTone(t.id):setTone(t.id)}
+                      disabled={toningUp}
+                    >
+                      {toningUp&&tone===t.id?<><div className="spin" style={{width:10,height:10,borderWidth:1.5}}/>{t.l}</>:t.l}
+                    </button>
+                  ))}
                 </div>
+                {toningUp&&<span style={{fontSize:12,color:"var(--o)",fontStyle:"italic"}}>Switching tone…</span>}
+              </div>
             </div>
             <div style={{fontSize:11,color:"var(--mu2)",padding:"4px 0 10px",display:"flex",alignItems:"center",gap:6}}>
               <span>💡</span>
@@ -1906,11 +1953,11 @@ ${result}`;
             </div>
             <div className="sidebar-label">All Tools</div>
             {positioning&&<div style={{margin:"0 10px 8px",background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:8,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setActiveTool("positioning")}>
-              <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>🎯 Your Positioning</div>
+              <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>🎯 Positioning</div>
               <div style={{fontSize:12,color:"var(--cr)",fontStyle:"italic",lineHeight:1.4,fontFamily:"'Fraunces',serif"}}>"{positioning.headline}"</div>
             </div>}
             {!positioning&&<div style={{margin:"0 10px 8px",background:"rgba(244,114,43,.04)",border:"1px dashed rgba(244,114,43,.2)",borderRadius:8,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setActiveTool("positioning")}>
-              <div style={{fontSize:11,color:"var(--mu)",lineHeight:1.4}}>🎯 <span style={{color:"var(--o)"}}>Define your positioning</span> — sets the anchor for your entire resume</div>
+              <div style={{fontSize:11,color:"var(--mu)",lineHeight:1.4}}>🎯 <span style={{color:"var(--o)"}}>Define your positioning</span> — start here</div>
             </div>}
             {TOOL_STEPS.map(step=>{
               const isDone = doneSteps.has(step.id)||(step.id==="builder"&&result);
