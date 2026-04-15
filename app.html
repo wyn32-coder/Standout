@@ -1270,6 +1270,7 @@ function App() {
   const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
   // hook widget state
   const [hookInput, setHookInput] = useState("");
+  const hookInputRef = useRef(null);
   const [hookRole, setHookRole] = useState("ic");
   const [hookLoading, setHookLoading] = useState(false);
   const [hookResult, setHookResult] = useState(null);
@@ -1295,7 +1296,7 @@ function App() {
 
   // Hook: Bullet Transform
   const runHook = async (input) => {
-    const txt = input || hookInput;
+    const txt = input || hookInputRef.current?.value || hookInput;
     if (!txt.trim()) return;
     setHookLoading(true); setHookResult(null);
     const raw = await callClaude(`Transform this weak resume bullet into 3 powerful versions for a ${ROLES.find(r=>r.id===hookRole)?.name}. Return ONLY JSON:\nWeak: "${txt}"\n{"versions":[{"label":"Conservative","text":"improved version","why":"what makes it stronger"},{"label":"Impact-Forward","text":"with business impact and plausible metrics","why":"what makes it stronger"},{"label":"Executive","text":"highest-level strategic framing","why":"what makes it stronger"}]}`);
@@ -1703,19 +1704,19 @@ ${result}`;
             </div>
           </div>
           <div className="hook-input-wrap">
-            <textarea rows={2} placeholder='e.g. "Managed customer accounts" or "Helped with marketing"' value={hookInput} onChange={e=>setHookInput(e.target.value)}/>
-            <button className="btn bp" onClick={()=>runHook()} disabled={hookLoading||!hookInput.trim()} style={{flexShrink:0}}>
+            <textarea ref={hookInputRef} rows={2} placeholder='e.g. "Managed customer accounts" or "Helped with marketing"' defaultValue={hookInput} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();runHook();}}}/>
+            <button className="btn bp" onClick={()=>runHook()} disabled={hookLoading} style={{flexShrink:0}}>
               {hookLoading?<><div className="spin"/>…</>:"Transform ✦"}
             </button>
           </div>
           <div className="hook-examples">
             <span style={{fontSize:12,color:"var(--mu2)",marginRight:4}}>Try:</span>
-            {HOOK_EXAMPLES.map((ex,i)=><span key={i} className="hook-ex" onClick={()=>{setHookInput(ex);runHook(ex);}}>"{ex}"</span>)}
+            {HOOK_EXAMPLES.map((ex,i)=><span key={i} className="hook-ex" onClick={()=>{if(hookInputRef.current)hookInputRef.current.value=ex;setHookInput(ex);runHook(ex);}}>"{ex}"</span>)}
           </div>
           {hookLoading&&<div className="loading" style={{padding:"20px 0"}}><div className="spin"/>Transforming your bullet…</div>}
           {hookResult&&!hookLoading&&(
             <div className="hook-result">
-              <div className="hook-original">{hookInput}</div>
+              <div className="hook-original">{hookInputRef.current?.value||hookInput}</div>
               {hookResult.versions?.map((v,i)=>(
                 <div key={i} className="hook-ver">
                   <div className="hook-ver-label">
