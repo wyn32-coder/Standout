@@ -411,19 +411,62 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
 .shc-tool-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
 .shc-nudge{font-size:12px;color:var(--mu);font-style:italic;margin-top:2px}
 /* Compact badge shown when on a tool */
-.score-badge-compact{
-  display:inline-flex;align-items:center;gap:10px;
-  background:rgba(13,21,32,.95);border:1.5px solid rgba(46,204,135,.3);
-  border-radius:10px;padding:7px 14px;
-  position:sticky;top:57px;z-index:50;
-  float:right;margin:0 24px 0 0;
-  backdrop-filter:blur(12px);
+/* Floating scoreboard badge — fixed position, always visible on tools */
+/* Floating score ring — always visible, every page */
+.score-ring-wrap{
+  position:fixed;
+  top:72px;
+  right:20px;
+  z-index:80;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:5px;
+  animation:badgeIn .4s cubic-bezier(.34,1.56,.64,1);
+  cursor:default;
+  filter:drop-shadow(0 4px 16px rgba(0,0,0,.5));
 }
-.sbc-num{font-family:'Fraunces',serif;font-size:22px;color:var(--green);line-height:1}
-.sbc-delta{font-size:11px;font-weight:700;color:var(--green);
+@keyframes badgeIn{from{opacity:0;transform:scale(.6)}to{opacity:1;transform:scale(1)}}
+.score-ring-svg{overflow:visible}
+.score-ring-track{fill:none;stroke:rgba(255,255,255,.05);stroke-width:7}
+.score-ring-fill{fill:none;stroke-width:7;stroke-linecap:round;
+  transform-origin:center;transform:rotate(-90deg);
+  transition:stroke-dasharray 1s cubic-bezier(.4,0,.2,1),stroke .4s ease}
+.score-ring-num{
+  font-family:'Fraunces',serif;
+  font-size:34px;
+  font-weight:400;
+  fill:var(--green);
+  text-anchor:middle;
+  dominant-baseline:middle;
+  transition:fill .4s ease;
+}
+.score-ring-denom{
+  font-family:'Outfit',sans-serif;
+  font-size:11px;
+  fill:rgba(46,204,135,.45);
+  text-anchor:middle;
+  dominant-baseline:middle;
+}
+.score-ring-label{
+  font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;
+  color:rgba(46,204,135,.55);text-align:center;
+}
+.score-ring-delta{
+  display:inline-flex;align-items:center;gap:3px;
+  font-size:11px;font-weight:700;color:var(--green);
   background:rgba(46,204,135,.1);border:1px solid rgba(46,204,135,.2);
-  border-radius:8px;padding:2px 8px}
-.sbc-label{font-size:10px;color:var(--mu2);font-weight:500}
+  border-radius:8px;padding:2px 9px;
+}
+.score-ring-tier{font-size:10px;color:rgba(46,204,135,.5);text-align:center;font-weight:500}
+/* Pulse glow on score update */
+@keyframes ringGlow{
+  0%{filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))}
+  40%{filter:drop-shadow(0 0 20px rgba(46,204,135,.5)) drop-shadow(0 4px 16px rgba(0,0,0,.3))}
+  100%{filter:drop-shadow(0 4px 16px rgba(0,0,0,.5))}
+}
+.score-ring-wrap.glow{animation:ringGlow .8s ease}
+@media(max-width:760px){.score-ring-wrap{top:auto;bottom:80px;right:16px}}
 @media(max-width:760px){
   .app-layout{grid-template-columns:1fr}
   .sidebar{display:none}
@@ -2082,21 +2125,31 @@ ${result}`;
           </div>
         </nav>
 
-        {/* SCORE BADGE — compact, shown when on a tool */}
-        {currentScore!==null&&activeTool&&(
-          <div className="score-badge-compact">
-            <div>
-              <div style={{fontSize:9,fontWeight:700,letterSpacing:2,textTransform:"uppercase",color:"var(--mu2)",marginBottom:1}}>Score</div>
-              <div className="sbc-num">{currentScore}<span style={{fontSize:12,color:"var(--mu2)",fontWeight:400}}>/100</span></div>
+        {/* SCORE RING — fixed, always visible once score exists */}
+        {currentScore!==null&&(()=>{
+          const r=46, circ=2*Math.PI*r;
+          const pct=currentScore/100;
+          const dash=pct*circ;
+          const col=currentScore>=90?"#2ecc87":currentScore>=75?"#2ecc87":currentScore>=55?"#f4722b":"#e05555";
+          const tier=currentScore>=90?"🏆 Top 10%":currentScore>=75?"⭐ Strong":currentScore>=55?"📈 Improving":"🔧 Needs work";
+          return(
+            <div className="score-ring-wrap" key={currentScore}>
+              <div className="score-ring-label">Resume Score</div>
+              <svg className="score-ring-svg" width="110" height="110" viewBox="0 0 110 110">
+                <circle className="score-ring-track" cx="55" cy="55" r={r}/>
+                <circle className="score-ring-fill" cx="55" cy="55" r={r}
+                  stroke={col}
+                  strokeDasharray={`${dash} ${circ}`}/>
+                <text className="score-ring-num" x="55" y="51" fill={col}>{currentScore}</text>
+                <text className="score-ring-denom" x="55" y="68">/100</text>
+              </svg>
+              {startScore!==null&&currentScore>startScore?(
+                <div className="score-ring-delta">↑ +{currentScore-startScore} pts</div>
+              ):null}
+              <div className="score-ring-tier">{tier}</div>
             </div>
-            {startScore!==null&&currentScore>startScore&&(
-              <div className="sbc-delta">↑ +{currentScore-startScore}</div>
-            )}
-            <div className="sbc-label">
-              {currentScore>=90?"🏆 Top 10%":currentScore>=75?"⭐ Strong":currentScore>=55?"📈 Up":""} 
-            </div>
-          </div>
-        )}
+          );
+        })()}
 
         <div className="app-layout">
           {/* SIDEBAR */}
@@ -2161,7 +2214,5 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
-
-
 
 
