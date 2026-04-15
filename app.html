@@ -365,6 +365,29 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
 .sidebar-home{display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:pointer;font-size:13px;font-weight:600;color:var(--mu);transition:color .18s;margin-bottom:4px;border-bottom:1px solid var(--line);padding-bottom:14px}
 .sidebar-home:hover{color:var(--o)}
 .main-content{min-width:0;overflow-x:hidden}
+.score-bar-persistent{
+  position:sticky;top:57px;z-index:50;
+  background:rgba(9,16,26,.95);backdrop-filter:blur(12px);
+  border-bottom:1px solid rgba(46,204,135,.15);
+  padding:0 24px;height:44px;
+  display:flex;align-items:center;gap:16px;
+  transition:all .3s ease;overflow:hidden;
+}
+.score-bar-persistent.hidden{height:0;padding:0;border:none;opacity:0}
+.sbp-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mu2);flex-shrink:0}
+.sbp-nums{display:flex;align-items:center;gap:8px}
+.sbp-before{font-family:'Fraunces',serif;font-size:16px;color:rgba(232,226,217,.25);text-decoration:line-through;text-decoration-color:rgba(224,85,85,.35)}
+.sbp-arrow{color:var(--mu2);font-size:12px}
+.sbp-after{font-family:'Fraunces',serif;font-size:22px;color:var(--green);line-height:1;transition:all .4s ease}
+.sbp-after.bump{animation:scoreBump .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes scoreBump{0%{transform:scale(1)}40%{transform:scale(1.3);color:#fff}100%{transform:scale(1);color:var(--green)}}
+.sbp-delta{display:inline-flex;align-items:center;gap:4px;background:rgba(46,204,135,.1);border:1px solid rgba(46,204,135,.2);border-radius:10px;padding:2px 10px;font-size:11px;font-weight:700;color:var(--green);flex-shrink:0}
+.sbp-divider{width:1px;height:20px;background:rgba(255,255,255,.06);flex-shrink:0}
+.sbp-tools{display:flex;gap:5px;align-items:center}
+.sbp-tool{font-size:10px;font-weight:600;padding:2px 8px;border-radius:8px;transition:all .3s;white-space:nowrap}
+.sbp-tool.done{background:rgba(46,204,135,.1);border:1px solid rgba(46,204,135,.22);color:var(--green)}
+.sbp-tool.todo{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);color:var(--mu2)}
+.sbp-max{margin-left:auto;font-size:11px;color:var(--mu2);flex-shrink:0}
 @media(max-width:760px){
   .app-layout{grid-template-columns:1fr}
   .sidebar{display:none}
@@ -1175,6 +1198,20 @@ const TOOL_STEPS = [
   {id:"coverletter",icon:"✉️",num:"9",title:"Write Your Cover Letter",desc:"Auto-filled from your polished resume. One click generates a tailored cover letter for any role.",badge:"Do This Last"},
 ];
 
+function calcATSScore(text){
+  if(!text) return 0;
+  let score = 0;
+  if(/[0-9]+%|[0-9]+x|\$[0-9,]+|[0-9]+\s*(people|team|clients)/i.test(text)) score += 25;
+  const sc = ["experience","education","skills","summary","professional","qualifications","certifications"].filter(s=>text.toLowerCase().includes(s));
+  if(sc.length >= 3) score += 20;
+  const wc = text.split(/\s+/).length;
+  if(wc >= 300 && wc <= 700) score += 15;
+  const vc = ["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","transformed","streamlined","optimized"].filter(v=>text.toLowerCase().includes(v)).length;
+  if(vc >= 3) score += 20;
+  score += 20;
+  return Math.min(score, 100);
+}
+
 function App() {
   const [activeTool, setActiveTool] = useState(null);
   const [usage, setUsage] = useState(0);
@@ -1210,6 +1247,10 @@ function App() {
   };
   const [tone, setTone] = useState("professional");
   const [toningUp, setToningUp] = useState(false); // live tone switch in progress
+  // ── SCORE TRACKER ──
+  const [startScore, setStartScore] = useState(null);   // score when first generated
+  const [currentScore, setCurrentScore] = useState(null); // updates after each improvement
+  const [toolsRun, setToolsRun] = useState(new Set());  // which tools have been applied
   const [showATS, setShowATS] = useState(false);
   const [improving, setImproving] = useState(false);
   const [improveMsg, setImproveMsg] = useState("");
@@ -1285,6 +1326,10 @@ function App() {
       const t=await callClaude(bSub==="resume"?mRP():mCP());
       setResult(t);
       if(!unlocked)setUsage(u=>u+1);
+      // Set starting score on first generate
+      const s = calcATSScore(t);
+      setCurrentScore(s);
+      if(startScore === null) setStartScore(s);
       // Auto-suggest positioning if none exists
       if(!positioning && bSub==="resume" && t){
         callClaude(`Based on this resume, suggest a career positioning. Return ONLY JSON:\n${t.slice(0,1500)}\n{"headline":"punchy 10-word positioning headline","summary":"2-sentence executive summary in first person","uniqueAngle":"1-sentence differentiator — what makes this person rare","targetRoles":["role1","role2","role3"],"powerPhrases":["phrase1","phrase2","phrase3","phrase4"]}`)
@@ -1404,6 +1449,10 @@ ${result}`;
 
       const improved = await callClaude(prompt, 1500);
       setResult(improved);
+      // Update score tracker
+      const newScore = calcATSScore(improved);
+      setCurrentScore(newScore);
+      setToolsRun(prev => new Set([...prev, source]));
       setImproveMsg("");
     }catch(e){
       setImproveMsg("Something went wrong — please try again.");
@@ -1945,6 +1994,38 @@ ${result}`;
           </div>
         </nav>
 
+        {/* PERSISTENT SCORE BAR */}
+        {currentScore!==null&&(
+          <div className={`score-bar-persistent`}>
+            <span className="sbp-label">Score</span>
+            <div className="sbp-nums">
+              {startScore!==null&&startScore!==currentScore&&(
+                <span className="sbp-before">{startScore}</span>
+              )}
+              <span className="sbp-arrow">{startScore!==currentScore?"→":""}</span>
+              <span className="sbp-after" key={currentScore}>{currentScore}</span>
+              <span style={{fontSize:11,color:"var(--mu2)"}}>/100</span>
+            </div>
+            {startScore!==null&&currentScore>startScore&&(
+              <div className="sbp-delta">↑ +{currentScore-startScore} pts</div>
+            )}
+            {startScore===currentScore&&(
+              <span style={{fontSize:11,color:"var(--mu2)",fontStyle:"italic"}}>Apply improvements to see it climb →</span>
+            )}
+            <div className="sbp-divider"/>
+            <div className="sbp-tools">
+              {["ATS","Recruiter","6-Second","Market","RoleIQ"].map(t=>(
+                <span key={t} className={`sbp-tool ${toolsRun.has(t)?"done":"todo"}`}>
+                  {toolsRun.has(t)&&"✓ "}{t}
+                </span>
+              ))}
+            </div>
+            <div className="sbp-max">
+              {currentScore>=90?"🏆 Top 10%":currentScore>=75?"⭐ Strong":currentScore>=55?"📈 Improving":"🔧 Needs work"}
+            </div>
+          </div>
+        )}
+
         <div className="app-layout">
           {/* SIDEBAR */}
           <div className="sidebar">
@@ -1952,6 +2033,7 @@ ${result}`;
               🏠 Home
             </div>
             <div className="sidebar-label">All Tools</div>
+
             {positioning&&<div style={{margin:"0 10px 8px",background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:8,padding:"10px 12px",cursor:"pointer"}} onClick={()=>setActiveTool("positioning")}>
               <div style={{fontSize:9,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>🎯 Positioning</div>
               <div style={{fontSize:12,color:"var(--cr)",fontStyle:"italic",lineHeight:1.4,fontFamily:"'Fraunces',serif"}}>"{positioning.headline}"</div>
@@ -2007,5 +2089,6 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
 
 
