@@ -1,12 +1,13 @@
 {
   "name": "standout",
   "version": "1.0.0",
-  "description": "AI career platform",
+  "description": "AI career platform \u2014 get the job, not just the resume",
   "private": true,
   "dependencies": {
-    "stripe": "^14.0.0"
+    "stripe": "^14.0.0",
+    "nodemailer": "^6.9.0"
   },
   "engines": {
-    "node": "24.x"
+    "node": "18.x"
   }
 }
