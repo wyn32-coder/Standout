@@ -78,7 +78,7 @@ export default async function handler(req, res) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${RESEND_API_KEY}` },
           body: JSON.stringify({
-            from: 'Standout <hello@standouttoday.com>',
+            from: 'Standout <standouttodayhelp@gmail.com>',
             to: [email],
             subject: "You're in — your Standout access is ready ✦",
             html: `
@@ -118,4 +118,3 @@ export default async function handler(req, res) {
 
   res.status(200).json({ received: true });
 }
-
