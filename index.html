@@ -890,12 +890,13 @@ function showResults(original, data){
   document.getElementById('score-delta').textContent  = `↑ +${delta} pts`;
 
   // Per-version scores — each version scores higher
+  // Impact-Forward IS the best score = scoreAfter (they must match)
   const vScores = {
     'Conservative':   Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.55),
-    'Impact-Forward': Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.95),
+    'Impact-Forward': scoreAfter,   // ← same as main score display
     'Executive':      Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.78),
   };
-  const bestScore = Math.max(...Object.values(vScores));
+  const bestScore = scoreAfter;  // always matches the main counter
 
   // Build bullet versions with scores
   const verList = document.getElementById('ver-list');
@@ -940,10 +941,10 @@ function showResults(original, data){
   scoreAfterEl.textContent = scoreBefore;
   setTimeout(()=>{ animateCount(scoreAfterEl, scoreBefore, scoreAfter, 900); }, 200);
 
-  // Animate bridge score with a slight delay
+  // Animate bridge score — counts up to same number as main score
   setTimeout(()=>{
-    animateCount(bridgeScore, scoreBefore, bestScore, 700);
-  }, 1200);
+    bridgeScore.textContent = scoreAfter; // set immediately, no animation needed since main already animated
+  }, 1100);
 }
 
 // Enter to run
@@ -953,3 +954,4 @@ document.getElementById('demo-input').addEventListener('keydown', e=>{
 </script>
 </body>
 </html>
+
