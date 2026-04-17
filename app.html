@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2309101a' stroke='%23f4722b' stroke-width='1.5'/%3E%3Crect x='5' y='8' width='22' height='4' rx='2' fill='%23f4722b'/%3E%3Crect x='5' y='14' width='15' height='4' rx='2' fill='%23f4722b' opacity='0.65'/%3E%3Crect x='5' y='20' width='18' height='4' rx='2' fill='%23f4722b' opacity='0.35'/%3E%3C/svg%3E"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Standout — AI Career Platform</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
@@ -41,7 +42,7 @@ body{font-family:'DM Sans',sans-serif;background:#09101a;color:#ede8df;min-heigh
 
 /* ── NAV ── */
 .nav{padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(9,16,26,.96);backdrop-filter:blur(16px);z-index:200;border-bottom:1px solid var(--line)}
-.logo{font-family:'Fraunces',serif;font-size:24px;color:var(--cr);letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+.logo{font-family:'Fraunces',serif;font-size:24px;color:var(--cr);letter-spacing:-.3px;display:flex;align-items:center;gap:10px;text-decoration:none}
 .logo-dot{width:10px;height:10px;background:var(--o);border-radius:50%;display:inline-block}
 .nav-r{display:flex;align-items:center;gap:10px}
 .nav-pill{font-size:11px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--o);border:1px solid var(--line);padding:4px 12px;border-radius:20px}
@@ -522,6 +523,39 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
 .fb-send:hover{background:var(--ol);transform:translateY(-1px)}
 .fb-send:disabled{opacity:.38;cursor:not-allowed;transform:none}
 .fb-success{text-align:center;padding:20px 0;font-size:15px;color:var(--green);font-weight:600;line-height:1.6}
+
+
+/* ── LOGIN / SESSION ── */
+.login-bar{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:20px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);cursor:pointer;
+  transition:all .18s;font-size:12px;font-weight:600;color:var(--mu)}
+.login-bar:hover{border-color:var(--line2);color:var(--cr)}
+.login-bar.logged-in{background:rgba(46,204,135,.08);border-color:rgba(46,204,135,.2);color:var(--green)}
+.login-avatar{width:22px;height:22px;border-radius:50%;background:var(--o);
+  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;flex-shrink:0}
+.login-modal-ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);
+  backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px}
+.login-modal{background:#111c2b;border:1.5px solid var(--line2);border-radius:20px;
+  padding:32px;width:100%;max-width:420px;
+  animation:slideUp .28s cubic-bezier(.34,1.56,.64,1)}
+.login-modal-title{font-family:'Fraunces',serif;font-size:24px;color:var(--cr);margin-bottom:6px;line-height:1.2}
+.login-modal-sub{font-size:14px;color:var(--mu);margin-bottom:22px;line-height:1.6}
+.login-input{width:100%;background:rgba(255,255,255,.04);border:1.5px solid var(--line);
+  border-radius:10px;padding:13px 16px;color:var(--cr);font-family:'DM Sans',sans-serif;
+  font-size:15px;outline:none;transition:border-color .18s;margin-bottom:12px}
+.login-input:focus{border-color:var(--o)}
+.login-btn{width:100%;background:var(--o);color:#fff;border:none;padding:14px;
+  border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;
+  font-family:'DM Sans',sans-serif;transition:all .18s;
+  display:flex;align-items:center;justify-content:center;gap:8px}
+.login-btn:hover{background:var(--ol)}
+.login-btn:disabled{opacity:.38;cursor:not-allowed}
+.login-sent{text-align:center;padding:12px 0}
+.login-sent-icon{font-size:36px;margin-bottom:10px}
+.login-sent-title{font-family:'Fraunces',serif;font-size:20px;color:var(--cr);margin-bottom:6px}
+.login-sent-sub{font-size:14px;color:var(--mu);line-height:1.65}
+.save-indicator{display:inline-flex;align-items:center;gap:5px;font-size:11px;
+  color:var(--green);animation:fadeIn .3s ease}
 
 </style>
 </head>
@@ -1354,6 +1388,112 @@ function App() {
   const [positioning, setPositioning] = useState(null); // {headline, summary, uniqueAngle, targetRoles, powerPhrases}
   const [suggestedPos, setSuggestedPos] = useState(null); // auto-suggested from resume
   const [posConfirmed, setPosConfirmed] = useState(false);
+  // ── SESSION / LOGIN ──
+  const [user, setUser] = useState(null);           // {id, email}
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginSent, setLoginSent] = useState(false);
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const [saveStatus, setSaveStatus] = useState("");  // "saving" | "saved" | ""
+  const autoSaveTimer = useRef(null);
+
+  // ── Check for magic token in URL on mount ──
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
+    if(token) verifyToken(token);
+  }, []);
+
+  const verifyToken = async(token) => {
+    try{
+      const res = await fetch("/api/session", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ action:"verify", token })
+      });
+      const data = await res.json();
+      if(data.ok){
+        setUser(data.user);
+        setUnlocked(true);
+        localStorage.setItem("so_unlocked","true");
+        localStorage.setItem("so_user", JSON.stringify(data.user));
+        // Restore saved data if exists
+        if(data.savedData){
+          const d = data.savedData;
+          if(d.R) setR(d.R);
+          if(d.positioning) setPositioning(d.positioning);
+          if(d.result) setResult(d.result);
+          if(d.tone) setTone(d.tone);
+          setImportVersion(v=>v+1);
+          setSaveStatus("restored");
+          setTimeout(()=>setSaveStatus(""),3000);
+        }
+        // Clean token from URL
+        window.history.replaceState({}, "", "/app.html?unlocked=true");
+      }
+    }catch(e){ console.error("Token verify error:", e); }
+  };
+
+  // ── Load session from localStorage on mount ──
+  useEffect(()=>{
+    const saved = localStorage.getItem("so_user");
+    if(saved){
+      try{ setUser(JSON.parse(saved)); }catch(e){}
+    }
+  }, []);
+
+  // ── Auto-save when key data changes ──
+  useEffect(()=>{
+    if(!user) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(()=>{ saveUserData(); }, 2000);
+    return ()=>clearTimeout(autoSaveTimer.current);
+  }, [result, positioning, R, tone]);
+
+  const saveUserData = async() => {
+    if(!user) return;
+    setSaveStatus("saving");
+    try{
+      await fetch("/api/session", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"save",
+          userId: user.id,
+          data:{ R, positioning, result, tone, timestamp: Date.now() }
+        })
+      });
+      setSaveStatus("saved");
+      setTimeout(()=>setSaveStatus(""),2500);
+    }catch(e){ setSaveStatus(""); }
+  };
+
+  const sendMagicLink = async() => {
+    if(!loginEmail.trim() || !loginEmail.includes("@")) {
+      setLoginError("Please enter a valid email address");
+      return;
+    }
+    setLoginLoading(true);
+    setLoginError("");
+    try{
+      const res = await fetch("/api/auth", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ email: loginEmail.trim() })
+      });
+      const data = await res.json();
+      if(data.ok){ setLoginSent(true); }
+      else { setLoginError(data.error || "Something went wrong — please try again"); }
+    }catch(e){ setLoginError("Something went wrong — please try again"); }
+    setLoginLoading(false);
+  };
+
+  const logout = () => {
+    setUser(null);
+    localStorage.removeItem("so_user");
+    setSaveStatus("");
+  };
   // ── FEEDBACK ──
   const [fbOpen, setFbOpen] = useState(false);
   const [fbRating, setFbRating] = useState(null);
@@ -2202,9 +2342,24 @@ ${result}`;
       <div className="app">
         <div className="grid"/>
         <nav className="nav">
-          <div className="logo" onClick={()=>setActiveTool(null)} style={{cursor:"pointer"}}><div className="logo-dot"/>Standout</div>
+          <div className="logo" onClick={()=>setActiveTool(null)} style={{cursor:"pointer"}}><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}><rect width="32" height="32" rx="7" fill="#09101a" stroke="#f4722b" strokeWidth="1.5"/><rect x="5" y="8" width="22" height="4" rx="2" fill="#f4722b"/><rect x="5" y="14" width="15" height="4" rx="2" fill="#f4722b" opacity="0.65"/><rect x="5" y="20" width="18" height="4" rx="2" fill="#f4722b" opacity="0.35"/></svg>Standout</div>
           <div className="nav-r">
+            <div style={{display:"flex",alignItems:"center",gap:8}}>
+            {saveStatus==="saving"&&<span className="save-indicator"><div className="spin" style={{width:10,height:10,borderWidth:1.5}}/>Saving…</span>}
+            {saveStatus==="saved"&&<span className="save-indicator">✓ Saved</span>}
+            {saveStatus==="restored"&&<span className="save-indicator">✓ Restored your work</span>}
+            {user?(
+              <div className="login-bar logged-in" onClick={()=>setLoginOpen(true)}>
+                <div className="login-avatar">{user.email[0].toUpperCase()}</div>
+                <span>{user.email.split("@")[0]}</span>
+              </div>
+            ):(
+              <div className="login-bar" onClick={()=>setLoginOpen(true)}>
+                <span>🔐</span><span>Sign in</span>
+              </div>
+            )}
             {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $29</button>:<div className="nav-pill">✦ Unlimited</div>}
+          </div>
           </div>
         </nav>
 
@@ -2290,6 +2445,52 @@ ${result}`;
         </div>
       </div>
 
+      {/* LOGIN MODAL */}
+      {loginOpen&&(
+        <div className="login-modal-ov" onClick={()=>{setLoginOpen(false);setLoginSent(false);setLoginEmail("");setLoginError("");}}>
+          <div className="login-modal" onClick={e=>e.stopPropagation()}>
+            {user?(
+              <>
+                <div className="login-modal-title">Your Account</div>
+                <div style={{background:"rgba(46,204,135,.06)",border:"1px solid rgba(46,204,135,.2)",borderRadius:10,padding:"14px 16px",marginBottom:18}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--green)",marginBottom:4}}>Signed in as</div>
+                  <div style={{fontSize:15,color:"var(--cr)",fontWeight:500}}>{user.email}</div>
+                </div>
+                <div style={{fontSize:13,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>
+                  Your resumes, positioning, and progress are saved automatically. Access from any device by signing in with your email.
+                </div>
+                <button className="login-btn" style={{background:"var(--o)"}} onClick={saveUserData} disabled={saveStatus==="saving"}>
+                  {saveStatus==="saving"?<><div className="spin" style={{width:14,height:14,borderWidth:2}}/>Saving…</>:"💾 Save Now"}
+                </button>
+                <button onClick={logout} style={{width:"100%",background:"transparent",border:"1px solid var(--line)",borderRadius:10,padding:"12px",marginTop:10,fontSize:14,color:"var(--mu)",cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>Sign Out</button>
+              </>
+            ):loginSent?(
+              <div className="login-sent">
+                <div className="login-sent-icon">📬</div>
+                <div className="login-sent-title">Check your email</div>
+                <div className="login-sent-sub">We sent a login link to <strong style={{color:"var(--cr)"}}>{loginEmail}</strong>.<br/>Click it to sign in — no password needed.<br/><br/><span style={{color:"var(--mu2)",fontSize:12}}>Link expires in 24 hours.</span></div>
+              </div>
+            ):(
+              <>
+                <div className="login-modal-title">Sign in to Standout</div>
+                <div className="login-modal-sub">Enter your email and we'll send you a magic link. No password needed — works on any device.</div>
+                <input className="login-input" type="email" placeholder="your@email.com"
+                  value={loginEmail} onChange={e=>setLoginEmail(e.target.value)}
+                  onKeyDown={e=>{if(e.key==="Enter")sendMagicLink();}}
+                  autoFocus/>
+                {loginError&&<div style={{fontSize:13,color:"var(--red)",marginBottom:10}}>{loginError}</div>}
+                <button className="login-btn" onClick={sendMagicLink} disabled={loginLoading}>
+                  {loginLoading?<><div className="spin" style={{width:14,height:14,borderWidth:2}}/>Sending…</>:"Send Magic Link →"}
+                </button>
+                <div style={{fontSize:11,color:"var(--mu2)",marginTop:10,textAlign:"center",lineHeight:1.6}}>
+                  New users get instant access after purchase.<br/>Already bought? Enter the email you used at checkout.
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* FEEDBACK TRIGGER */}
       <button className="fb-trigger" onClick={()=>{setFbOpen(true);setFbSent(false);}}>
         💬 Share feedback
@@ -2332,4 +2533,3 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
-
