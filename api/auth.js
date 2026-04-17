@@ -1,7 +1,7 @@
-// api/auth.js — uses Gmail SMTP via Nodemailer
-import nodemailer from 'nodemailer';
+// api/auth.js — sends email via Gmail SMTP using nodemailer
+const nodemailer = require('nodemailer');
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -19,12 +19,8 @@ export default async function handler(req, res) {
   const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 
   console.log('Auth request for:', email);
-  console.log('Supabase configured:', !!SUPABASE_URL && !!SUPABASE_SERVICE_KEY);
-  console.log('Gmail configured:', !!GMAIL_USER && !!GMAIL_APP_PASSWORD);
-
-  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-    return res.status(500).json({ error: 'Server configuration error' });
-  }
+  console.log('Supabase:', !!SUPABASE_URL, !!SUPABASE_SERVICE_KEY);
+  console.log('Gmail:', !!GMAIL_USER, !!GMAIL_APP_PASSWORD);
 
   try {
     const headers = {
@@ -35,7 +31,7 @@ export default async function handler(req, res) {
     };
 
     // 1. Upsert user
-    const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/users`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -43,66 +39,53 @@ export default async function handler(req, res) {
         last_login_request: new Date().toISOString(),
       }),
     });
-    const upsertData = await upsertRes.json();
-    console.log('Upsert result:', JSON.stringify(upsertData));
 
     // 2. Create magic token
-    const token = [
-      Math.random().toString(36).slice(2),
-      Math.random().toString(36).slice(2),
-      Date.now().toString(36)
-    ].join('');
+    const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2) + Date.now().toString(36);
     const expires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    const tokenRes = await fetch(`${SUPABASE_URL}/rest/v1/magic_tokens`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/magic_tokens`, {
       method: 'POST',
       headers: { ...headers, 'Prefer': 'return=minimal' },
-      body: JSON.stringify({
-        email: email.toLowerCase().trim(),
-        token,
-        expires_at: expires,
-        used: false,
-      }),
+      body: JSON.stringify({ email: email.toLowerCase().trim(), token, expires_at: expires, used: false }),
     });
-    console.log('Token insert status:', tokenRes.status);
 
-    // 3. Send email via Gmail SMTP
     const loginUrl = `https://standouttoday.com/app.html?token=${token}`;
     console.log('Login URL:', loginUrl);
 
+    // 3. Send via Gmail
     if (GMAIL_USER && GMAIL_APP_PASSWORD) {
       const transporter = nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: {
           user: GMAIL_USER,
-          pass: GMAIL_APP_PASSWORD.replace(/\s/g, ''), // remove spaces if any
+          pass: GMAIL_APP_PASSWORD.replace(/\s/g, ''),
         },
       });
 
-      await transporter.sendMail({
+      const info = await transporter.sendMail({
         from: `"Standout" <${GMAIL_USER}>`,
         to: email,
         subject: 'Your Standout login link',
-        html: `
-          <div style="font-family:'Helvetica Neue',Arial,sans-serif;max-width:480px;margin:0 auto;background:#09101a;border-radius:16px;padding:40px 32px">
-            <div style="font-family:Georgia,serif;font-size:24px;color:#e8e2d9;font-style:italic;margin-bottom:24px">Standout</div>
-            <h1 style="font-family:Georgia,serif;font-size:28px;color:#e8e2d9;margin:0 0 12px;font-weight:400;font-style:italic">Your login link</h1>
-            <p style="font-size:15px;color:rgba(232,226,217,.6);line-height:1.7;margin:0 0 28px">Click below to sign in to Standout. This link expires in 24 hours.</p>
-            <a href="${loginUrl}" style="display:block;background:#f4722b;color:#fff;text-align:center;padding:16px 24px;border-radius:10px;font-size:16px;font-weight:700;text-decoration:none;margin-bottom:20px">Open Standout →</a>
-            <p style="font-size:12px;color:rgba(232,226,217,.3);margin:0">If you didn't request this, ignore this email. · standouttoday.com</p>
-          </div>
-        `,
+        html: `<div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#09101a;border-radius:16px">
+          <p style="font-family:Georgia,serif;font-size:22px;color:#e8e2d9;font-style:italic;margin:0 0 20px">Standout</p>
+          <h1 style="font-family:Georgia,serif;font-size:26px;color:#e8e2d9;margin:0 0 10px;font-weight:400">Your login link</h1>
+          <p style="font-size:14px;color:rgba(232,226,217,.6);margin:0 0 24px">Click below to sign in. Link expires in 24 hours.</p>
+          <a href="${loginUrl}" style="display:block;background:#f4722b;color:#fff;text-align:center;padding:15px;border-radius:10px;font-size:16px;font-weight:700;text-decoration:none;margin-bottom:16px">Open Standout →</a>
+          <p style="font-size:11px;color:rgba(232,226,217,.25);margin:0">standouttoday.com</p>
+        </div>`,
       });
-      console.log('Gmail sent successfully to:', email);
+      console.log('Email sent:', info.messageId);
     } else {
-      console.log('NO GMAIL CONFIG — login URL:', loginUrl);
+      console.log('No Gmail config — URL only:', loginUrl);
     }
 
     return res.status(200).json({ ok: true });
 
   } catch (err) {
-    console.error('Auth error:', err.message);
-    return res.status(500).json({ error: 'Failed to send login link' });
+    console.error('Auth error:', err.message, err.stack);
+    return res.status(500).json({ error: err.message });
   }
-}
-
+};
