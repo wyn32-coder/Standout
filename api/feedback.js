@@ -31,8 +31,8 @@ export default async function handler(req, res) {
           'Authorization': `Bearer ${RESEND_API_KEY}`,
         },
         body: JSON.stringify({
-          from: 'Standout Feedback <feedback@standouttoday.com>',
-          to: ['hello@standouttoday.com'],
+          from: 'Standout Feedback <standouttodayhelp@gmail.com>',
+          to: ['standouttodayhelp@gmail.com'],
           subject: `${ratingText} — ${page || 'Standout'} — ${timestamp}`,
           html: `
             <div style="font-family:sans-serif;max-width:560px;margin:0 auto">
@@ -62,4 +62,3 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 }
-
