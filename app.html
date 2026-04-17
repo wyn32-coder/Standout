@@ -1523,13 +1523,7 @@ function App() {
   const [retailoring, setRetailoring] = useState(false);
   const [result, setResult] = useState(null);
 
-  // ── Auto-save when key data changes (must be after result declaration) ──
-  useEffect(()=>{
-    if(!user) return;
-    clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(()=>{ saveUserData(); }, 2000);
-    return ()=>clearTimeout(autoSaveTimer.current);
-  }, [result, positioning, R, tone]);
+
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
@@ -1571,6 +1565,14 @@ function App() {
   const resultRef = useRef(null);
   const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",targetJobTitle:"",jobDesc:"",linkedinUrl:"",portfolioUrl:""});
   const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
+
+  // ── Auto-save when key data changes ──
+  useEffect(()=>{
+    if(!user) return;
+    clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(()=>{ saveUserData(); }, 2000);
+    return ()=>clearTimeout(autoSaveTimer.current);
+  }, [result, positioning, R, tone]);
   // hook widget state
   const [hookInput, setHookInput] = useState("");
   const hookInputRef = useRef(null);
