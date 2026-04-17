@@ -471,6 +471,58 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
   .app-layout{grid-template-columns:1fr}
   .sidebar{display:none}
 }
+
+/* ── FEEDBACK BUTTON + MODAL ── */
+.fb-trigger{
+  position:fixed;bottom:24px;left:24px;z-index:90;
+  background:var(--green);color:#000;
+  border:none;border-radius:24px;
+  padding:12px 20px;font-size:14px;font-weight:700;
+  cursor:pointer;display:flex;align-items:center;gap:8px;
+  transition:all .2s;font-family:'DM Sans',sans-serif;
+  box-shadow:0 4px 20px rgba(46,204,135,.35);
+  letter-spacing:.2px;
+}
+.fb-trigger:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(46,204,135,.45);background:#35e094}
+.fb-trigger:active{transform:translateY(0)}
+.fb-modal-ov{
+  position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
+  display:flex;align-items:flex-end;justify-content:flex-start;
+  padding:24px;animation:fbFadeIn .2s ease;
+}
+@keyframes fbFadeIn{from{opacity:0}to{opacity:1}}
+.fb-modal{
+  background:#111c2b;border:1.5px solid rgba(244,114,43,.3);
+  border-radius:18px;padding:24px;width:100%;max-width:400px;
+  animation:fbSlideUp .28s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+}
+@keyframes fbSlideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+.fb-modal-title{font-family:'Fraunces',serif;font-size:20px;color:var(--cr);margin-bottom:5px}
+.fb-modal-sub{font-size:13px;color:var(--mu);margin-bottom:16px;line-height:1.55}
+.fb-ratings{display:flex;gap:8px;margin-bottom:14px}
+.fb-rating{
+  flex:1;padding:10px 6px;border-radius:10px;
+  border:1px solid var(--line);background:rgba(255,255,255,.03);
+  cursor:pointer;text-align:center;font-size:13px;font-weight:600;
+  color:var(--mu);transition:all .15s;
+}
+.fb-rating:hover{border-color:var(--line2);color:var(--cr);background:rgba(255,255,255,.06)}
+.fb-rating.on.up{background:rgba(46,204,135,.12);border-color:rgba(46,204,135,.35);color:var(--green)}
+.fb-rating.on.down{background:rgba(224,85,85,.1);border-color:rgba(224,85,85,.3);color:var(--red)}
+.fb-rating.on.idea{background:rgba(244,114,43,.1);border-color:rgba(244,114,43,.3);color:var(--o)}
+.fb-send{
+  background:var(--o);color:#fff;border:none;
+  padding:12px 0;border-radius:10px;
+  font-size:15px;font-weight:700;cursor:pointer;width:100%;
+  font-family:'DM Sans',sans-serif;transition:all .18s;margin-top:11px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.fb-send:hover{background:var(--ol);transform:translateY(-1px)}
+.fb-send:disabled{opacity:.38;cursor:not-allowed;transform:none}
+.fb-success{text-align:center;padding:20px 0;font-size:15px;color:var(--green);font-weight:600;line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -2280,3 +2332,4 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
