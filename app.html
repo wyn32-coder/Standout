@@ -1302,6 +1302,37 @@ function App() {
   const [positioning, setPositioning] = useState(null); // {headline, summary, uniqueAngle, targetRoles, powerPhrases}
   const [suggestedPos, setSuggestedPos] = useState(null); // auto-suggested from resume
   const [posConfirmed, setPosConfirmed] = useState(false);
+  // ── FEEDBACK ──
+  const [fbOpen, setFbOpen] = useState(false);
+  const [fbRating, setFbRating] = useState(null);
+  const [fbText, setFbText] = useState("");
+  const [fbSent, setFbSent] = useState(false);
+  const [fbSending, setFbSending] = useState(false);
+
+  const sendFeedback = async() => {
+    if(!fbText.trim() && !fbRating) return;
+    setFbSending(true);
+    try{
+      await fetch("/api/feedback", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          message: fbText || "(no message)",
+          rating: fbRating,
+          page: activeTool || "home",
+          context: activeTool ? `User was on: ${activeTool}` : "User was on home screen"
+        })
+      });
+    }catch(e){}
+    setFbSent(true);
+    setFbSending(false);
+    setTimeout(()=>{
+      setFbOpen(false);
+      setFbSent(false);
+      setFbRating(null);
+      setFbText("");
+    }, 2000);
+  };
   // builder state
   const [loading, setLoading] = useState(false);
   const [retailoring, setRetailoring] = useState(false);
@@ -2206,6 +2237,41 @@ ${result}`;
           </div>
         </div>
       </div>
+
+      {/* FEEDBACK TRIGGER */}
+      <button className="fb-trigger" onClick={()=>{setFbOpen(true);setFbSent(false);}}>
+        💬 Share feedback
+      </button>
+
+      {/* FEEDBACK MODAL */}
+      {fbOpen&&(
+        <div className="fb-modal-ov" onClick={()=>setFbOpen(false)}>
+          <div className="fb-modal" onClick={e=>e.stopPropagation()}>
+            {fbSent?(
+              <div className="fb-success">✓ Thanks — we read every single one!</div>
+            ):(
+              <>
+                <div className="fb-modal-title">Share your thoughts</div>
+                <div className="fb-modal-sub">What's working? What's confusing? What do you wish existed?</div>
+                <div className="fb-ratings">
+                  <div className={`fb-rating up ${fbRating==="up"?"on":""}`} onClick={()=>setFbRating(r=>r==="up"?null:"up")}>👍 Loving it</div>
+                  <div className={`fb-rating down ${fbRating==="down"?"on":""}`} onClick={()=>setFbRating(r=>r==="down"?null:"down")}>👎 Needs work</div>
+                  <div className={`fb-rating idea ${fbRating==="idea"?"on":""}`} onClick={()=>setFbRating(r=>r==="idea"?null:"idea")}>💡 Idea</div>
+                </div>
+                <textarea rows={4} placeholder="Tell us anything — we read every single message..."
+                  value={fbText} onChange={e=>setFbText(e.target.value)} style={{marginBottom:0}}/>
+                <button className="fb-send" onClick={sendFeedback}
+                  disabled={fbSending||(!fbText.trim()&&!fbRating)}>
+                  {fbSending?<><div className="spin" style={{width:14,height:14,borderWidth:2}}/>Sending…</>:"Send Feedback →"}
+                </button>
+                <div style={{fontSize:11,color:"var(--mu2)",marginTop:8,textAlign:"center"}}>
+                  Goes straight to the founder · No spam ever
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -2214,5 +2280,3 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
-
-
