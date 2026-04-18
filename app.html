@@ -1399,10 +1399,19 @@ function App() {
   const autoSaveTimer = useRef(null);
 
   // ── Check for magic token in URL on mount ──
+  // Handles both ?token= (custom) and #access_token= (Supabase OTP)
   useEffect(()=>{
+    // Check query param first
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
-    if(token) verifyToken(token);
+    if(token){ verifyToken(token); return; }
+    // Check hash for Supabase OTP format
+    const hash = window.location.hash;
+    if(hash && hash.includes("access_token")){
+      const hashParams = new URLSearchParams(hash.replace("#",""));
+      const accessToken = hashParams.get("access_token");
+      if(accessToken) verifySupabaseToken(accessToken);
+    }
   }, []);
 
   const verifyToken = async(token) => {
