@@ -648,20 +648,59 @@ function pJ(t){try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch
 function ATSPanel({result,jobDesc,onImprove}){
   if(!result)return null;
   let score=0;const checks=[];
-  const hm=/\d+%|\d+x|\$[\d,]+|\d+\s*(people|team|clients)/i.test(result);
-  checks.push({ok:hm,icon:hm?"✅":"⚠️",t:hm?"Quantified achievements present":"Add metrics — numbers boost ATS ranking"});if(hm)score+=25;
-  const sc=["experience","education","skills","summary","professional","work history","qualifications","profile","objective","certifications","achievements"].filter(s=>result.toLowerCase().includes(s));
-  checks.push({ok:sc.length>=3,icon:sc.length>=3?"✅":"⚠️",t:sc.length>=3?`Section headers found`:"Add standard section headers"});if(sc.length>=3)score+=20;
+
+  // Metrics — max 25pts, scaled by count
+  const metricMatches=(result.match(/\b\d+[%x]|\$[\d,]+|\d+\s*(people|team|clients|users|accounts|reports)/gi)||[]).length;
+  const metricPts=Math.min(25,metricMatches*5);
+  score+=metricPts;
+  checks.push({ok:metricPts>=15,icon:metricPts>=15?"✅":metricPts>0?"⚠️":"❌",
+    t:metricPts>=15?`${metricMatches} quantified achievements — strong`:
+      metricPts>0?`${metricMatches} metrics found — aim for 5+`:
+      "No metrics found — add numbers to every bullet"});
+
+  // Section headers — max 20pts
+  const sc=["experience","education","skills","summary","professional","certifications","achievements"].filter(s=>result.toLowerCase().includes(s));
+  const headerPts=Math.min(20,sc.length*5);
+  score+=headerPts;
+  checks.push({ok:sc.length>=3,icon:sc.length>=3?"✅":"⚠️",
+    t:sc.length>=3?"Section headers found":"Add standard section headers (Experience, Education, Skills)"});
+
+  // Word count — max 15pts
   const wc=result.split(/\s+/).length;
-  checks.push({ok:wc>=300&&wc<=700,icon:wc>=300&&wc<=700?"✅":"⚠️",t:`${wc} words — ${wc>=300&&wc<=700?"ideal range":"aim for 300–700"}`});if(wc>=300&&wc<=700)score+=15;
-  const vc=["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","directed","produced","grew","saved","transformed","streamlined","negotiated","trained","mentored","analyzed","identified","secured","owned","scaled","deployed","partnered","collaborated","facilitated","introduced","optimized"].filter(v=>new RegExp(`\\b${v}\\b`,"i").test(result)).length;
-  checks.push({ok:vc>=3,icon:vc>=3?"✅":"⚠️",t:vc>=3?`${vc} action verbs found`:`Only ${vc} action verbs — add more`});if(vc>=3)score+=20;
-  if(jobDesc?.length>50){const jw=jobDesc.toLowerCase().split(/\W+/).filter(w=>w.length>4);const pct=Math.round((jw.filter(w=>result.toLowerCase().includes(w)).length/Math.max(jw.length,1))*100);checks.push({ok:pct>=40,icon:pct>=40?"✅":"⚠️",t:pct>=40?`${pct}% keyword match`:`${pct}% keyword match — re-tailor`});if(pct>=40)score+=20;}
-  else{score+=20;checks.push({ok:true,icon:"ℹ️",t:"Paste a JD to check keyword match"});}
-  score=Math.min(score,100);
+  const wcPts=wc>=300&&wc<=700?15:wc>=200&&wc<=800?8:0;
+  score+=wcPts;
+  checks.push({ok:wcPts>=15,icon:wcPts>=15?"✅":wcPts>0?"⚠️":"❌",
+    t:`${wc} words — ${wc>=300&&wc<=700?"ideal range":wc<300?"too short — add more detail":"too long — trim to 300–700"}`});
+
+  // Action verbs — max 20pts, scaled
+  const vc=["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","transformed","streamlined","optimized","architected","negotiated","secured","scaled","deployed","mentored","grew","saved","directed","facilitated","introduced","owned","partnered"].filter(v=>new RegExp(`\b${v}\b`,"i").test(result)).length;
+  const verbPts=Math.min(20,vc*2);
+  score+=verbPts;
+  checks.push({ok:vc>=6,icon:vc>=6?"✅":vc>=3?"⚠️":"❌",
+    t:vc>=6?`${vc} action verbs — strong`:vc>=3?`${vc} action verbs — aim for 6+`:`Only ${vc} action verbs — start every bullet with a verb`});
+
+  // Keyword match vs JD — max 20pts, honest scaling
+  if(jobDesc?.length>50){
+    const jw=jobDesc.toLowerCase().split(/\W+/).filter(w=>w.length>4);
+    const matched=jw.filter(w=>result.toLowerCase().includes(w)).length;
+    const pct=Math.round((matched/Math.max(jw.length,1))*100);
+    // Honest: 40% is mediocre, 60% is good, 80%+ is excellent
+    const kwPts=pct>=70?20:pct>=55?14:pct>=40?8:pct>=25?4:0;
+    score+=kwPts;
+    checks.push({ok:pct>=55,icon:pct>=70?"✅":pct>=40?"⚠️":"❌",
+      t:pct>=70?`${pct}% keyword match — excellent`:
+        pct>=55?`${pct}% keyword match — good`:
+        pct>=40?`${pct}% keyword match — needs improvement (aim for 60%+)`:
+        `${pct}% keyword match — low, re-tailor for this role`});
+  } else {
+    checks.push({ok:false,icon:"ℹ️",t:"Paste a job description above to check keyword match"});
+    // No JD bonus — max score without JD is 80
+  }
+
+  score=Math.min(100,score);
   const cls=score>=80?"hi":score>=55?"mi":"lo",col=score>=80?"#3db87a":score>=55?"#f4722b":"#e05555";
   const r=30,circ=2*Math.PI*r,dash=(score/100)*circ;
-    const weakChecks = checks.filter(c=>!c.ok).map(c=>c.t).join(", ");
+  const weakChecks=checks.filter(c=>!c.ok).map(c=>c.t).join(", ");
   return(<div className="atsp"><div className="atsh"><div><div style={{fontFamily:"'Fraunces',serif",fontSize:15,color:"var(--cr)"}}>ATS Score</div><div style={{fontSize:12,color:"var(--mu)",marginTop:2}}>Screening compatibility</div></div><div className="ring"><svg width="68" height="68" viewBox="0 0 68 68"><circle cx="34" cy="34" r={r} fill="none" stroke="rgba(255,255,255,.05)" strokeWidth="5"/><circle cx="34" cy="34" r={r} fill="none" stroke={col} strokeWidth="5" strokeDasharray={`${dash} ${circ}`} strokeLinecap="round" style={{transition:"stroke-dasharray 1s ease"}}/></svg><div className={`rnum ${cls}`}>{score}</div></div></div><div>{checks.map((c,i)=><div key={i} className="achk"><span>{c.icon}</span><span>{c.t}</span></div>)}</div>{weakChecks&&onImprove&&<div style={{marginTop:14,paddingTop:14,borderTop:"1px solid var(--line)",textAlign:"center"}}><button className="btn bp bsm" onClick={()=>onImprove("ATS",weakChecks)} style={{width:"100%",justifyContent:"center"}}>⚡ Apply ATS Improvements to Resume</button><div style={{fontSize:11,color:"var(--mu2)",marginTop:6}}>Rewrites your resume to fix the issues above</div></div>}</div>);
 }
 
