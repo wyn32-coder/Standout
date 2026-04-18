@@ -557,6 +557,39 @@ textarea::placeholder,input::placeholder{color:var(--mu2)}
 .save-indicator{display:inline-flex;align-items:center;gap:5px;font-size:11px;
   color:var(--green);animation:fadeIn .3s ease}
 
+
+/* ── SAVED RESUMES ── */
+.sv-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;
+  background:rgba(46,204,135,.05);border:1px solid rgba(46,204,135,.15);
+  border-radius:10px;margin-bottom:14px;flex-wrap:wrap}
+.sv-btn{padding:6px 13px;border-radius:8px;font-size:12px;font-weight:600;
+  cursor:pointer;transition:all .15s;font-family:'DM Sans',sans-serif;border:none}
+.sv-btn-save{background:var(--green);color:#000}
+.sv-btn-save:hover{background:#35e094}
+.sv-btn-load{background:rgba(255,255,255,.06);color:var(--mu);border:1px solid var(--line)}
+.sv-btn-load:hover{background:rgba(255,255,255,.1);color:var(--cr)}
+.sv-modal-ov{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);
+  backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:24px}
+.sv-modal{background:#111c2b;border:1.5px solid var(--line2);border-radius:18px;
+  padding:24px;width:100%;max-width:460px;max-height:80vh;overflow-y:auto;
+  animation:slideUp .25s cubic-bezier(.34,1.56,.64,1)}
+.sv-modal-title{font-family:'Fraunces',serif;font-size:20px;color:var(--cr);margin-bottom:16px}
+.sv-item{display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:rgba(255,255,255,.03);border:1px solid var(--line);
+  border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .15s}
+.sv-item:hover{background:rgba(255,255,255,.06);border-color:var(--line2)}
+.sv-item-name{flex:1;font-size:14px;font-weight:500;color:var(--cr)}
+.sv-item-meta{font-size:11px;color:var(--mu2)}
+.sv-item-del{padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;
+  background:rgba(224,85,85,.08);border:1px solid rgba(224,85,85,.2);
+  color:var(--red);cursor:pointer;transition:all .15s;flex-shrink:0}
+.sv-item-del:hover{background:rgba(224,85,85,.15)}
+.sv-name-input{width:100%;background:rgba(255,255,255,.04);border:1.5px solid var(--line);
+  border-radius:9px;padding:11px 14px;color:var(--cr);font-family:'DM Sans',sans-serif;
+  font-size:14px;outline:none;margin-bottom:10px;transition:border-color .18s}
+.sv-name-input:focus{border-color:var(--o)}
+.sv-empty{text-align:center;padding:24px;font-size:14px;color:var(--mu);line-height:1.6}
+
 </style>
 </head>
 <body>
@@ -1333,6 +1366,7 @@ function CoverLetterTool({R, result, tone, TONES, TONE_I, callClaude}){
             <div className="racts">
               <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(clResult);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>{copied?"✓ Copied!":"📋 Copy"}</button>
               <button className="ibtn" onClick={()=>{const b=new Blob([clResult],{type:"text/plain"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=`cover-letter-${(localC.company||"company").toLowerCase().replace(/\s+/g,"-")}.txt`;a.click();URL.revokeObjectURL(u);}}>⬇ Download</button>
+              {onSaveCoverLetter&&<button className="ibtn" style={{color:"var(--green)",borderColor:"rgba(46,204,135,.3)"}} onClick={()=>onSaveCoverLetter(clResult,localC.company)}>💾 Save</button>}
             </div>
           </div>
           <div className="rbody">{clResult}</div>
@@ -1396,6 +1430,12 @@ function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [saveStatus, setSaveStatus] = useState("");  // "saving" | "saved" | ""
+  const [savedResumes, setSavedResumes] = useState([]);  // [{id,name,result,tone,R,positioning,savedAt}]
+  const [svModalOpen, setSvModalOpen] = useState(false);
+  const [svMode, setSvMode] = useState("load"); // "load" | "save"
+  const [svName, setSvName] = useState("");
+  const [savedCoverLetters, setSavedCoverLetters] = useState([]);
+  const [svTab, setSvTab] = useState("resumes"); // "resumes" | "coverletters"
   const autoSaveTimer = useRef(null);
 
   // ── Check for magic token in URL on mount ──
@@ -1439,6 +1479,8 @@ function App() {
           if(d.positioning) setPositioning(d.positioning);
           if(d.result) setResult(d.result);
           if(d.tone) setTone(d.tone);
+          if(d.savedResumes) setSavedResumes(d.savedResumes);
+          if(d.savedCoverLetters) setSavedCoverLetters(d.savedCoverLetters);
           setImportVersion(v=>v+1);
           setSaveStatus("restored");
           setTimeout(()=>setSaveStatus(""),3000);
@@ -1474,6 +1516,108 @@ function App() {
       setSaveStatus("saved");
       setTimeout(()=>setSaveStatus(""),2500);
     }catch(e){ setSaveStatus(""); }
+  };
+
+  // ── SAVE A NAMED RESUME VERSION ──
+  const saveResumeVersion = async(name) => {
+    if(!user || !result) return;
+    const newVersion = {
+      id: Date.now().toString(),
+      name: name || `Resume ${new Date().toLocaleDateString()}`,
+      result,
+      tone,
+      R,
+      positioning,
+      savedAt: new Date().toISOString(),
+      score: currentScore,
+    };
+    const updated = [newVersion, ...savedResumes.filter(r=>r.name!==name)].slice(0,25);
+    setSavedResumes(updated);
+    // Save to Supabase
+    setSaveStatus("saving");
+    try{
+      await fetch("/api/session", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"save",
+          userId: user.id,
+          data:{ R, positioning, result, tone, savedResumes: updated, savedCoverLetters, timestamp: Date.now() }
+        })
+      });
+      setSaveStatus("saved");
+      setTimeout(()=>setSaveStatus(""),2500);
+    }catch(e){ setSaveStatus(""); }
+    setSvModalOpen(false);
+    setSvName("");
+  };
+
+  // ── LOAD A SAVED RESUME VERSION ──
+  const loadResumeVersion = (version) => {
+    if(version.result) setResult(version.result);
+    if(version.tone) setTone(version.tone);
+    if(version.R) setLocalR(version.R);
+    if(version.positioning) setPositioning(version.positioning);
+    setImportVersion(v=>v+1);
+    setSvModalOpen(false);
+    setSaveStatus("restored");
+    setTimeout(()=>setSaveStatus(""),3000);
+  };
+
+  // ── DELETE A SAVED RESUME ──
+  const deleteResumeVersion = async(id) => {
+    const updated = savedResumes.filter(r=>r.id!==id);
+    setSavedResumes(updated);
+    if(user){
+      await fetch("/api/session", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ action:"save", userId: user.id,
+          data:{ R, positioning, result, tone, savedResumes: updated, savedCoverLetters, timestamp: Date.now() }
+        })
+      });
+    }
+  };
+
+  const deleteCoverLetterVersion = async(id) => {
+    const updated = savedCoverLetters.filter(r=>r.id!==id);
+    setSavedCoverLetters(updated);
+    if(user){
+      await fetch("/api/session", {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({ action:"save", userId: user.id,
+          data:{ R, positioning, result, tone, savedResumes, savedCoverLetters: updated, timestamp: Date.now() }
+        })
+      });
+    }
+  };
+
+  // ── SAVE A COVER LETTER VERSION ──
+  const saveCoverLetterVersion = async(name, clText) => {
+    if(!user || !clText) return;
+    const newVersion = {
+      id: Date.now().toString(),
+      name: name || `Cover Letter ${new Date().toLocaleDateString()}`,
+      text: clText,
+      savedAt: new Date().toISOString(),
+    };
+    const updated = [newVersion, ...savedCoverLetters.filter(r=>r.name!==name)].slice(0,25);
+    setSavedCoverLetters(updated);
+    setSaveStatus("saving");
+    try{
+      await fetch("/api/session", {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          action:"save",
+          userId: user.id,
+          data:{ R, positioning, result, tone, savedResumes, savedCoverLetters: updated, timestamp: Date.now() }
+        })
+      });
+      setSaveStatus("saved");
+      setTimeout(()=>setSaveStatus(""),2500);
+    }catch(e){ setSaveStatus(""); }
+    setSvModalOpen(false);
+    setSvName("");
   };
 
   const sendMagicLink = async() => {
@@ -1545,7 +1689,7 @@ function App() {
     if(!result) return;
     const filename = (localR?.name||R.name||"resume").toLowerCase().replace(/\s+/g,"-");
     const label = bSub==="resume" ? "resume" : "cover-letter";
-    const date = new Date().toISOString().slice(0,10);
+    const date = new Date().toISOString().slice(0,25);
     const blob = new Blob([result], {type:"text/plain"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2328,6 +2472,28 @@ ${result}`;
               <span>💡</span>
               <span>Download as .txt → open in Word or Google Docs to format and save different versions</span>
             </div>
+            {/* Save/Load versions bar */}
+            {user&&(
+              <div className="sv-bar">
+                <span style={{fontSize:12,color:"var(--mu)",flex:1}}>
+                  {savedResumes.length>0?`${savedResumes.length} saved version${savedResumes.length>1?"s":""}`:"Save this version to access it later"}
+                </span>
+                <button className="sv-btn sv-btn-save" onClick={()=>{setSvMode("save");setSvModalOpen(true);}}>
+                  💾 Save Version
+                </button>
+                {savedResumes.length>0&&(
+                  <button className="sv-btn sv-btn-load" onClick={()=>{setSvMode("load");setSvModalOpen(true);}}>
+                    📂 Load Saved
+                  </button>
+                )}
+              </div>
+            )}
+            {!user&&result&&(
+              <div className="sv-bar">
+                <span style={{fontSize:12,color:"var(--mu)",flex:1}}>🔐 Sign in to save and access your resumes from any device</span>
+                <button className="sv-btn sv-btn-save" onClick={()=>setLoginOpen(true)}>Sign in to save</button>
+              </div>
+            )}
             <div className="rbody">{result}</div>
             <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={doRetailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
             {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback and see your market ranking</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all tools · $29</button></div></>}
@@ -2455,7 +2621,13 @@ ${result}`;
             {activeTool==="roleiq"&&<RoleIQ resumeText={result} onImprove={(src,fb)=>{applyImprovements(src,fb);setActiveTool("builder");}}/>}
             {activeTool==="coach"&&<CoachingMode onAddToResume={(txt)=>{addBulletsToResume(txt);setActiveTool("builder");}}/>}
             {activeTool==="tracker"&&<JobTracker/>}
-            {activeTool==="coverletter"&&<CoverLetterTool R={R} result={result} tone={tone} TONES={TONES} TONE_I={TONE_I} callClaude={callClaude}/>}
+            {activeTool==="coverletter"&&<CoverLetterTool R={R} result={result} tone={tone} TONES={TONES} TONE_I={TONE_I} callClaude={callClaude}
+  onSaveCoverLetter={(text, company)=>{
+    const name = company ? `${company} Cover Letter` : `Cover Letter ${new Date().toLocaleDateString()}`;
+    saveCoverLetterVersion(name, text);
+    setSvTab("coverletters");
+  }}
+/>}
           </div>
         )}
           </div>
@@ -2508,6 +2680,89 @@ ${result}`;
         </div>
       )}
 
+      {/* SAVE/LOAD MODAL */}
+      {svModalOpen&&(
+        <div className="sv-modal-ov" onClick={()=>setSvModalOpen(false)}>
+          <div className="sv-modal" onClick={e=>e.stopPropagation()}>
+            {/* Tabs */}
+            <div style={{display:"flex",gap:8,marginBottom:16}}>
+              <button onClick={()=>setSvTab("resumes")}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",
+                  background:svTab==="resumes"?"var(--o)":"rgba(255,255,255,.05)",
+                  color:svTab==="resumes"?"#fff":"var(--mu)",fontWeight:600,fontSize:13,
+                  fontFamily:"'DM Sans',sans-serif"}}>
+                📄 Resumes
+              </button>
+              <button onClick={()=>setSvTab("coverletters")}
+                style={{flex:1,padding:"8px",borderRadius:8,border:"none",cursor:"pointer",
+                  background:svTab==="coverletters"?"var(--o)":"rgba(255,255,255,.05)",
+                  color:svTab==="coverletters"?"#fff":"var(--mu)",fontWeight:600,fontSize:13,
+                  fontFamily:"'DM Sans',sans-serif"}}>
+                ✉️ Cover Letters
+              </button>
+            </div>
+            {svTab==="resumes"&&svMode==="save"?(
+              <>
+                <div className="sv-modal-title">Save this resume</div>
+                <input className="sv-name-input" placeholder="e.g. Tech-Focused, Google Application, Startup Tone…"
+                  value={svName} onChange={e=>setSvName(e.target.value)}
+                  onKeyDown={e=>e.key==="Enter"&&saveResumeVersion(svName)}
+                  autoFocus/>
+                <button className="sv-btn sv-btn-save" style={{width:"100%",padding:"12px"}}
+                  onClick={()=>saveResumeVersion(svName||`Resume ${new Date().toLocaleDateString()}`)}>
+                  💾 Save Version
+                </button>
+                {savedResumes.length>0&&(
+                  <>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu2)",margin:"16px 0 8px"}}>Or overwrite existing</div>
+                    {savedResumes.map(v=>(
+                      <div key={v.id} className="sv-item" onClick={()=>saveResumeVersion(v.name)}>
+                        <div className="sv-item-name">{v.name}</div>
+                        <div className="sv-item-meta">{v.score?`Score: ${v.score} · `:""}{new Date(v.savedAt).toLocaleDateString()}</div>
+                      </div>
+                    ))}
+                  </>
+                )}
+              </>
+            ):svTab==="resumes"?(
+              <>
+                <div className="sv-modal-title">Load a saved resume</div>
+                {savedResumes.length===0?(
+                  <div className="sv-empty">No saved resumes yet.<br/>Generate a resume and save it to access it here.</div>
+                ):(
+                  savedResumes.map(v=>(
+                    <div key={v.id} className="sv-item">
+                      <div style={{flex:1}} onClick={()=>loadResumeVersion(v)}>
+                        <div className="sv-item-name">{v.name}</div>
+                        <div className="sv-item-meta">{v.score?`Score: ${v.score} · `:""}{new Date(v.savedAt).toLocaleDateString()} · {v.tone||"professional"} tone</div>
+                      </div>
+                      <button className="sv-item-del" onClick={e=>{e.stopPropagation();deleteResumeVersion(v.id);}}>Delete</button>
+                    </div>
+                  ))
+                )}
+              </>
+            ):(
+              <>
+                <div className="sv-modal-title">Load a saved cover letter</div>
+                {savedCoverLetters.length===0?(
+                  <div className="sv-empty">No saved cover letters yet.<br/>Write a cover letter in Step 9 and save it here.</div>
+                ):(
+                  savedCoverLetters.map(v=>(
+                    <div key={v.id} className="sv-item">
+                      <div style={{flex:1}} onClick={()=>{setSvModalOpen(false);}}>
+                        <div className="sv-item-name">{v.name}</div>
+                        <div className="sv-item-meta">{new Date(v.savedAt).toLocaleDateString()}</div>
+                      </div>
+                      <button className="sv-item-del" onClick={e=>{e.stopPropagation();deleteCoverLetterVersion(v.id);}}>Delete</button>
+                    </div>
+                  ))
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* FEEDBACK TRIGGER */}
       <button className="fb-trigger" onClick={()=>{setFbOpen(true);setFbSent(false);}}>
         💬 Share feedback
@@ -2550,3 +2805,4 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
+
