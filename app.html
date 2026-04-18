@@ -1410,7 +1410,12 @@ function App() {
     if(hash && hash.includes("access_token")){
       const hashParams = new URLSearchParams(hash.replace("#",""));
       const accessToken = hashParams.get("access_token");
-      if(accessToken) verifySupabaseToken(accessToken);
+      if(accessToken){
+        setUnlocked(true);
+        localStorage.setItem("so_unlocked","true");
+        localStorage.setItem("so_access_token", accessToken);
+        window.history.replaceState({}, "", "/app.html?unlocked=true");
+      }
     }
   }, []);
 
