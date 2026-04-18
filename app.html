@@ -1397,19 +1397,107 @@ const TOOL_STEPS = [
   {id:"coverletter",icon:"✉️",num:"9",title:"Write Your Cover Letter",desc:"Auto-filled from your polished resume. One click generates a tailored cover letter for any role.",badge:"Do This Last"},
 ];
 
-function calcATSScore(text){
-  if(!text) return 0;
-  let score = 0;
-  if(/[0-9]+%|[0-9]+x|\$[0-9,]+|[0-9]+\s*(people|team|clients)/i.test(text)) score += 25;
-  const sc = ["experience","education","skills","summary","professional","qualifications","certifications"].filter(s=>text.toLowerCase().includes(s));
-  if(sc.length >= 3) score += 20;
+// ── 4-DIMENSION SCORING ENGINE ──
+// Returns {total, ats, recruiter, roleFit, positioning, breakdown}
+
+function calcResumeScore(text, {
+  positioning=null,
+  toolsRun=new Set(),
+  improvementsApplied=new Set(),
+  jobDesc=""
+}={}){
+  if(!text) return {total:0, ats:0, recruiter:0, roleFit:0, positioning:0, breakdown:[]};
+  const t = text.toLowerCase();
+
+  // ── DIMENSION 1: ATS READINESS (0-25) ──
+  let ats = 0;
+  const breakdown = [];
+
+  // Metrics/numbers (0-8)
+  const hasMetrics = /[0-9]+%|[0-9]+x|\$[0-9,]+|[0-9]+\s*(people|team|clients|users|customers|accounts)/i.test(text);
+  const metricCount = (text.match(/\b\d+[%x]|\$[\d,]+|\d+\s*(people|team|clients|users)/gi)||[]).length;
+  const metricPts = Math.min(8, metricCount * 2);
+  ats += metricPts;
+  breakdown.push({dim:"ATS", label:"Quantified achievements", pts:metricPts, max:8, ok:metricPts>=4});
+
+  // Section headers (0-6)
+  const headers = ["experience","education","skills","summary","professional summary","certifications","achievements","qualifications"].filter(s=>t.includes(s));
+  const headerPts = Math.min(6, headers.length * 2);
+  ats += headerPts;
+  breakdown.push({dim:"ATS", label:"Section headers", pts:headerPts, max:6, ok:headerPts>=4});
+
+  // Action verbs (0-6)
+  const verbs = ["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","transformed","streamlined","optimized","architected","negotiated","secured","scaled","deployed","mentored","trained","grew","saved"].filter(v=>t.includes(v));
+  const verbPts = Math.min(6, Math.floor(verbs.length * 0.75));
+  ats += verbPts;
+  breakdown.push({dim:"ATS", label:"Action verbs", pts:verbPts, max:6, ok:verbPts>=4});
+
+  // Word count sweet spot (0-5)
   const wc = text.split(/\s+/).length;
-  if(wc >= 300 && wc <= 700) score += 15;
-  const vc = ["led","built","created","managed","developed","launched","drove","increased","reduced","improved","achieved","delivered","spearheaded","oversaw","generated","established","implemented","designed","executed","coordinated","transformed","streamlined","optimized"].filter(v=>text.toLowerCase().includes(v)).length;
-  if(vc >= 3) score += 20;
-  score += 20;
-  return Math.min(score, 100);
+  const wcPts = (wc>=300 && wc<=750) ? 5 : (wc>=200 && wc<=900) ? 3 : 1;
+  ats += wcPts;
+  breakdown.push({dim:"ATS", label:`Word count (${wc} words)`, pts:wcPts, max:5, ok:wcPts>=4});
+
+  ats = Math.min(25, ats);
+
+  // ── DIMENSION 2: RECRUITER IMPACT (0-25) ──
+  // Starts low — needs validation tools to climb
+  let recruiter = 6; // baseline for having a generated resume
+  
+  if(toolsRun.has("Recruiter")) recruiter += 6;
+  if(improvementsApplied.has("Recruiter")) recruiter += 8;
+  if(toolsRun.has("6-Second")) recruiter += 3;
+  if(improvementsApplied.has("6-Second")) recruiter += 5;
+  
+  // Bonus: clear contact info and strong summary
+  if(text.includes("@") && text.match(/\d{3}[-.\s]\d{3}/)) recruiter += 2;
+  
+  recruiter = Math.min(25, recruiter);
+  breakdown.push({dim:"Recruiter", label:"Recruiter validation", pts:recruiter, max:25, 
+    ok:recruiter>=15, hint:recruiter<15?"Run Recruiter Feedback to improve":null});
+
+  // ── DIMENSION 3: ROLE FIT (0-25) ──
+  // Starts very low — needs role-specific tools
+  let roleFit = 4; // baseline
+
+  if(toolsRun.has("Market")) roleFit += 6;
+  if(improvementsApplied.has("Market")) roleFit += 5;
+  if(toolsRun.has("RoleIQ")) roleFit += 6;
+  if(improvementsApplied.has("RoleIQ")) roleFit += 6;
+
+  // Keyword match bonus if JD provided
+  if(jobDesc && jobDesc.length > 50){
+    const jw = jobDesc.toLowerCase().split(/\W+/).filter(w=>w.length>4);
+    const matched = jw.filter(w=>t.includes(w)).length;
+    const matchPct = matched / Math.max(jw.length, 1);
+    roleFit += Math.round(matchPct * 4);
+  }
+
+  roleFit = Math.min(25, roleFit);
+  breakdown.push({dim:"Role Fit", label:"Role alignment", pts:roleFit, max:25,
+    ok:roleFit>=15, hint:roleFit<10?"Run Role Intelligence to close this gap":null});
+
+  // ── DIMENSION 4: POSITIONING STRENGTH (0-25) ──
+  let pos = 0;
+
+  if(positioning){
+    pos += 10; // has positioning
+    if(positioning.headline && positioning.headline.length > 20) pos += 5;
+    if(positioning.uniqueAngle && positioning.uniqueAngle.length > 20) pos += 5;
+    if(positioning.powerPhrases && positioning.powerPhrases.length >= 3) pos += 5;
+  }
+
+  pos = Math.min(25, pos);
+  breakdown.push({dim:"Positioning", label:"Career positioning", pts:pos, max:25,
+    ok:pos>=15, hint:pos===0?"Define Your Positioning first — it unlocks everything":pos<15?"Strengthen your positioning story":null});
+
+  const total = Math.min(100, Math.round(ats + recruiter + roleFit + pos));
+
+  return {total, ats, recruiter, roleFit, positioning:pos, breakdown};
 }
+
+// Backwards compat wrapper
+function calcATSScore(text){ return calcResumeScore(text).total; }
 
 function App() {
   const [activeTool, setActiveTool] = useState(null);
@@ -1723,9 +1811,11 @@ function App() {
   const [tone, setTone] = useState("professional");
   const [toningUp, setToningUp] = useState(false); // live tone switch in progress
   // ── SCORE TRACKER ──
-  const [startScore, setStartScore] = useState(null);   // score when first generated
-  const [currentScore, setCurrentScore] = useState(null); // updates after each improvement
-  const [toolsRun, setToolsRun] = useState(new Set());  // which tools have been applied
+  const [startScore, setStartScore] = useState(null);
+  const [currentScore, setCurrentScore] = useState(null);
+  const [scoreBreakdown, setScoreBreakdown] = useState([]);
+  const [toolsRun, setToolsRun] = useState(new Set());
+  const [improvementsApplied, setImprovementsApplied] = useState(new Set());
   const [showATS, setShowATS] = useState(false);
   const [improving, setImproving] = useState(false);
   const [improveMsg, setImproveMsg] = useState("");
@@ -1743,6 +1833,14 @@ function App() {
   const resultRef = useRef(null);
   const [R, setR] = useState({name:"",jobTitle:"",email:"",phone:"",experience:"",education:"",skills:"",targetRole:"",targetJobTitle:"",jobDesc:"",linkedinUrl:"",portfolioUrl:""});
   const [C, setC] = useState({name:"",company:"",role:"",hiringManager:"",experience:"",whyCompany:"",jobDesc:""});
+
+  // ── Recalculate score when positioning changes ──
+  useEffect(()=>{
+    if(!result) return;
+    const scoreData = calcResumeScore(result, { positioning, toolsRun, improvementsApplied });
+    setCurrentScore(scoreData.total);
+    setScoreBreakdown(scoreData.breakdown);
+  }, [positioning]);
 
   // ── Auto-save when key data changes ──
   useEffect(()=>{
@@ -1811,9 +1909,10 @@ function App() {
       setResult(t);
       if(!unlocked)setUsage(u=>u+1);
       // Set starting score on first generate
-      const s = calcATSScore(t);
-      setCurrentScore(s);
-      if(startScore === null) setStartScore(s);
+      const scoreData = calcResumeScore(t, { positioning, toolsRun, improvementsApplied });
+      setCurrentScore(scoreData.total);
+      setScoreBreakdown(scoreData.breakdown);
+      if(startScore === null) setStartScore(scoreData.total);
       // Auto-suggest positioning if none exists
       if(!positioning && bSub==="resume" && t){
         callClaude(`Based on this resume, suggest a career positioning. Return ONLY JSON:\n${t.slice(0,1500)}\n{"headline":"punchy 10-word positioning headline","summary":"2-sentence executive summary in first person","uniqueAngle":"1-sentence differentiator — what makes this person rare","targetRoles":["role1","role2","role3"],"powerPhrases":["phrase1","phrase2","phrase3","phrase4"]}`)
@@ -1934,9 +2033,12 @@ ${result}`;
       const improved = await callClaude(prompt, 1500);
       setResult(improved);
       // Update score tracker
-      const newScore = calcATSScore(improved);
-      setCurrentScore(newScore);
+      const newApplied = new Set([...improvementsApplied, source]);
+      setImprovementsApplied(newApplied);
       setToolsRun(prev => new Set([...prev, source]));
+      const newScoreData = calcResumeScore(improved, { positioning, toolsRun: new Set([...toolsRun, source]), improvementsApplied: newApplied });
+      setCurrentScore(newScoreData.total);
+      setScoreBreakdown(newScoreData.breakdown);
       setImproveMsg("");
     }catch(e){
       setImproveMsg("Something went wrong — please try again.");
@@ -2200,22 +2302,50 @@ ${result}`;
               {currentScore<55&&<><div className="shc-tier">🔧</div><div className="shc-tier-label">Needs work</div><div className="shc-tier-sub">Big gains ahead</div></>}
             </div>
           </div>
-          <div className="shc-tools">
-            {[
-              {key:"ATS",      label:"ATS Score",   tool:"builder"},
-              {key:"Recruiter",label:"Recruiter",    tool:"feedback"},
-              {key:"6-Second", label:"6-Sec Scan",   tool:"sim"},
-              {key:"Market",   label:"Market Rank",  tool:"market"},
-              {key:"RoleIQ",   label:"Role IQ",      tool:"roleiq"},
-            ].map(({key,label,tool})=>(
-              <div key={key} className={`shc-tool ${toolsRun.has(key)?"done":"todo"}`}
-                onClick={()=>!toolsRun.has(key)&&result&&setActiveTool(tool)}
-                style={{cursor:!toolsRun.has(key)&&result?"pointer":"default"}}>
-                <div className="shc-tool-dot"/>
-                {toolsRun.has(key)?"✓ ":""}{label}
+          {/* 4-Dimension breakdown bars */}
+          {(()=>{
+            const scoreData = calcResumeScore(result||"", {positioning, toolsRun, improvementsApplied});
+            const dims = [
+              {key:"ats", label:"ATS", score:scoreData.ats, max:25, tool:"builder"},
+              {key:"recruiter", label:"Recruiter", score:scoreData.recruiter, max:25, tool:"feedback"},
+              {key:"roleFit", label:"Role Fit", score:scoreData.roleFit, max:25, tool:"roleiq"},
+              {key:"positioning", label:"Positioning", score:scoreData.positioning, max:25, tool:"positioning"},
+            ];
+            return(
+              <div style={{paddingTop:14,borderTop:"1px solid rgba(255,255,255,.05)"}}>
+                <div style={{fontSize:10,fontWeight:700,letterSpacing:2,textTransform:"uppercase",
+                  color:"var(--mu2)",marginBottom:10}}>Score Breakdown</div>
+                {dims.map(d=>{
+                  const pct = Math.round((d.score/d.max)*100);
+                  const col = pct>=80?"var(--green)":pct>=50?"var(--o)":"var(--red)";
+                  return(
+                    <div key={d.key} style={{marginBottom:8,cursor:result?"pointer":"default"}}
+                      onClick={()=>result&&setActiveTool(d.tool)}>
+                      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
+                        <span style={{fontSize:11,color:"var(--mu)",fontWeight:500}}>{d.label}</span>
+                        <span style={{fontSize:11,color:col,fontWeight:700}}>{d.score}/{d.max}</span>
+                      </div>
+                      <div style={{height:5,background:"rgba(255,255,255,.06)",borderRadius:3,overflow:"hidden"}}>
+                        <div style={{height:"100%",width:`${pct}%`,background:col,
+                          borderRadius:3,transition:"width .6s ease"}}/>
+                      </div>
+                    </div>
+                  );
+                })}
+                {scoreBreakdown.filter(d=>d.hint).slice(0,1).map((d,i)=>(
+                  <div key={i} style={{marginTop:10,padding:"8px 10px",
+                    background:"rgba(244,114,43,.06)",border:"1px solid rgba(244,114,43,.15)",
+                    borderRadius:8,fontSize:11,color:"var(--o)",lineHeight:1.5,cursor:"pointer"}}
+                    onClick={()=>setActiveTool(
+                      d.dim==="Recruiter"?"feedback":d.dim==="Role Fit"?"roleiq":
+                      d.dim==="Positioning"?"positioning":"builder"
+                    )}>
+                    💡 {d.hint} →
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2573,14 +2703,16 @@ ${result}`;
           const dash=pct*circ;
           const col=currentScore>=90?"#2ecc87":currentScore>=75?"#2ecc87":currentScore>=55?"#f4722b":"#e05555";
           const tier=currentScore>=90?"🏆 Top 10%":currentScore>=75?"⭐ Strong":currentScore>=55?"📈 Improving":"🔧 Needs work";
+          // Find weakest dimension for nudge
+          const hints = scoreBreakdown.filter(d=>d.hint);
+          const topHint = hints[0]?.hint || null;
           return(
             <div className="score-ring-wrap" key={currentScore}>
               <div className="score-ring-label">Resume Score</div>
               <svg className="score-ring-svg" width="110" height="110" viewBox="0 0 110 110">
                 <circle className="score-ring-track" cx="55" cy="55" r={r}/>
                 <circle className="score-ring-fill" cx="55" cy="55" r={r}
-                  stroke={col}
-                  strokeDasharray={`${dash} ${circ}`}/>
+                  stroke={col} strokeDasharray={`${dash} ${circ}`}/>
                 <text className="score-ring-num" x="55" y="51" fill={col}>{currentScore}</text>
                 <text className="score-ring-denom" x="55" y="68">/100</text>
               </svg>
@@ -2588,6 +2720,12 @@ ${result}`;
                 <div className="score-ring-delta">↑ +{currentScore-startScore} pts</div>
               ):null}
               <div className="score-ring-tier">{tier}</div>
+              {topHint&&currentScore<90&&(
+                <div style={{fontSize:10,color:"var(--o)",textAlign:"center",lineHeight:1.4,
+                  maxWidth:110,marginTop:3,fontStyle:"italic"}}>
+                  {topHint}
+                </div>
+              )}
             </div>
           );
         })()}
