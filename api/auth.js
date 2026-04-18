@@ -22,12 +22,9 @@ export default async function handler(req, res) {
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
 
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    return res.status(500).json({ error: 'Missing env vars', supabase: !!SUPABASE_URL, anonKey: !!SUPABASE_ANON_KEY });
-  }
-
   try {
-    const response = await fetch(`${SUPABASE_URL}/auth/v1/otp`, {
+    // Use magiclink type instead of otp
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/magiclink`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -36,15 +33,14 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         email: email.toLowerCase().trim(),
-        create_user: true,
       }),
     });
 
-    const data = await response.json();
-    console.log('Supabase OTP:', response.status, JSON.stringify(data));
+    const text = await response.text();
+    console.log('Supabase magiclink response:', response.status, text);
 
     if (!response.ok) {
-      return res.status(400).json({ error: data.message || 'Failed to send link' });
+      return res.status(400).json({ error: 'Failed to send link — ' + text });
     }
 
     return res.status(200).json({ ok: true });
