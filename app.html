@@ -1445,7 +1445,7 @@ function App() {
     const params = new URLSearchParams(window.location.search);
     const token = params.get("token");
     if(token){ verifyToken(token); return; }
-    // Check hash for Supabase OTP format
+    // Check hash for Supabase magic link format (#access_token=...)
     const hash = window.location.hash;
     if(hash && hash.includes("access_token")){
       const hashParams = new URLSearchParams(hash.replace("#",""));
@@ -1453,7 +1453,27 @@ function App() {
       if(accessToken){
         setUnlocked(true);
         localStorage.setItem("so_unlocked","true");
-        localStorage.setItem("so_access_token", accessToken);
+        // Exchange access token for user info via our API
+        fetch("/api/session", {
+          method:"POST",
+          headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({ action:"verify_access_token", accessToken })
+        }).then(r=>r.json()).then(data=>{
+          if(data.ok && data.user){
+            setUser(data.user);
+            localStorage.setItem("so_user", JSON.stringify(data.user));
+            if(data.savedData){
+              const d = data.savedData;
+              if(d.R) setR(d.R);
+              if(d.positioning) setPositioning(d.positioning);
+              if(d.result) setResult(d.result);
+              if(d.tone) setTone(d.tone);
+              if(d.savedResumes) setSavedResumes(d.savedResumes);
+              if(d.savedCoverLetters) setSavedCoverLetters(d.savedCoverLetters);
+              setImportVersion(v=>v+1);
+            }
+          }
+        }).catch(()=>{});
         window.history.replaceState({}, "", "/app.html?unlocked=true");
       }
     }
@@ -2805,4 +2825,3 @@ const rootEl = document.getElementById("root"); rootEl.innerHTML = ""; ReactDOM.
   </script>
 </body>
 </html>
-
