@@ -95,6 +95,60 @@ export default async function handler(req, res) {
     }
   }
 
+  // ── VERIFY SUPABASE ACCESS TOKEN (from magic link hash) ──
+  if (req.method === 'POST' && req.body?.action === 'verify_access_token') {
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(400).json({ error: 'Access token required' });
+
+    try {
+      // Get user info from Supabase using the access token
+      const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'apikey': SUPABASE_SERVICE_KEY,
+        },
+      });
+      const userData = await userRes.json();
+      console.log('Supabase user lookup:', userRes.status, userData?.email);
+
+      if (!userData?.email) {
+        return res.status(401).json({ error: 'Invalid access token' });
+      }
+
+      // Upsert user in our users table
+      const upsertRes = await fetch(`${SUPABASE_URL}/rest/v1/users`, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'Prefer': 'resolution=merge-duplicates,return=representation',
+        },
+        body: JSON.stringify({
+          email: userData.email,
+          last_login: new Date().toISOString(),
+        }),
+      });
+      const users = await upsertRes.json();
+      const userId = Array.isArray(users) ? users[0]?.id : users?.id;
+
+      // Load saved data
+      const dataRes = await fetch(
+        `${SUPABASE_URL}/rest/v1/user_data?user_id=eq.${userId}&select=*`,
+        { headers }
+      );
+      const dataRows = await dataRes.json();
+      const savedData = dataRows[0]?.data || null;
+
+      return res.status(200).json({
+        ok: true,
+        user: { id: userId, email: userData.email },
+        savedData,
+      });
+    } catch (err) {
+      console.error('verify_access_token error:', err);
+      return res.status(500).json({ error: 'Verification failed' });
+    }
+  }
+
   // ── SAVE USER DATA ──
   if (req.method === 'POST' && req.body?.action === 'save') {
     const { userId, data } = req.body;
