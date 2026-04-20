@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 const STRIPE_LINK = "https://buy.stripe.com/7sYfZh54cfRb3iReAVew800";
 const FREE_LIMIT = 1;
@@ -392,7 +393,7 @@ function RecruiterSim({resumeText}){
   };
   return(<div>{!running&&!done&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>⏱️</div><div style={{fontFamily:"'DM Serif Display',serif",fontSize:20,color:"var(--cr)",marginBottom:8}}>6-Second Recruiter Simulation</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Watch how a recruiter's eyes scan your resume. See what gets noticed, what gets skipped, and whether you'd advance.</p><button className="btn bp" onClick={run}>Start Simulation ▶</button></div>)}
   {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{resumeText.split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{resumeText.split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
-  {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"✕ Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button></div>)}</div>)}</div>);
+  {done&&analysis&&(<div style={{animation:"up .3s ease",marginTop:14}}><div style={{background:analysis.wouldAdvance?"rgba(61,184,122,.09)":"rgba(224,85,85,.09)",border:`1px solid ${analysis.wouldAdvance?"#3db87a":"#e05555"}`,borderRadius:10,padding:16,marginBottom:12}}><div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:analysis.wouldAdvance?"#3db87a":"#e05555",marginBottom:5}}>{analysis.wouldAdvance?"✓ Would Advance":"�� Would Not Advance"}</div><div style={{fontSize:14,color:"rgba(237,232,223,.78)",lineHeight:1.65}}>{analysis.sixSecondVerdict}</div></div>{[{label:"👁 What stood out",items:analysis.whatStoodOut,c:"var(--green)"},{label:"🚫 What was missed",items:analysis.whatWasMissed,c:"var(--red)"},{label:"➡ Eye path",items:analysis.eyePath,c:"var(--blue)"}].map((sec,si)=>sec.items?.length>0&&(<div key={si} className="fb-sec"><div className="fb-sec-t" style={{color:sec.c}}>{sec.label}</div>{sec.items.map((item,i)=><div key={i} className="sim-vi"><span style={{flexShrink:0}}>{si===0?"✦":si===1?"○":`${i+1}.`}</span><span>{item}</span></div>)}</div>))}<button className="btn bgh bsm" onClick={()=>{setDone(false);setProgress(0);}}>Run Again</button></div>)}</div>)}</div>);
 }
 
 // ─── TOOL: MARKET COMPARISON ──────────────────────────────────────────────────
@@ -753,6 +754,7 @@ export default function App() {
           </div>
         )}
       </div>
+      <Analytics />
     </>
   );
 }
