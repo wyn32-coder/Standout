@@ -1187,8 +1187,11 @@ function RecruiterSim({resumeText,onImprove}){
   const PHASES=[{t:0,l:"Scanning name & title…"},{t:1.5,l:"Reading most recent role…"},{t:3,l:"Checking company names…"},{t:4,l:"Scanning for numbers…"},{t:5.5,l:"Verdict forming…"}];
   const run=async()=>{
     setRunning(true);setDone(false);setProgress(0);setPhase(0);setAnalysis(null);
+    try{
     const [simR]=await Promise.all([callClaude(`Senior recruiter, 6-second scan. Return ONLY JSON:\n${resumeText}\n{"firstImpression":"1-sentence gut reaction","whatStoodOut":["t1","t2","t3"],"whatWasMissed":["m1","m2"],"eyePath":["1st","2nd","3rd"],"wouldAdvance":true,"advanceReason":"1 sentence","sixSecondVerdict":"honest 2-sentence verdict"}`),new Promise(resolve=>{let t=0;timer.current=setInterval(()=>{t+=.1;setProgress(Math.min((t/6)*100,100));setPhase(Math.max(0,PHASES.filter(p=>p.t<=t).length-1));if(t>=6){clearInterval(timer.current);resolve();}},100);})]);
-    setAnalysis(pJ(simR));setRunning(false);setDone(true);
+    setAnalysis(pJ(simR));
+    }catch(e){console.error("Sim error:",e);}
+    finally{setRunning(false);setDone(true);}
   };
   return(<div>{!running&&!done&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>⏱️</div><div style={{fontFamily:"'Fraunces',serif",fontSize:20,color:"var(--cr)",marginBottom:8}}>6-Second Recruiter Simulation</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Watch how a recruiter's eyes scan your resume. See what gets noticed, what gets skipped, and whether you'd advance.</p><button className="btn bp" onClick={run}>Start Simulation ▶</button></div>)}
   {(running||done)&&(<div><div className="sim-timer"><div className="sim-tick">{Math.min(6,Math.round(progress*.06*10)/10).toFixed(1)}s</div><div className="sim-bar-wrap"><div className="sim-bar-fill" style={{width:`${progress}%`}}/></div><span style={{fontSize:11,color:"var(--mu2)",flexShrink:0}}>/ 6 sec</span></div><div className="sim-phase">{running?PHASES[Math.min(phase,PHASES.length-1)]?.l:"Complete"}</div><div className="sim-txt">{(resumeText||"").split("\n").slice(0,18).map((line,i)=><span key={i} style={{display:"block",opacity:done?1:(i<(phase+1)*3?1:.15),transition:"opacity .4s ease"}}>{line||"\u00A0"}</span>)}{(resumeText||"").split("\n").length>18&&<span style={{opacity:.3}}>…</span>}</div>
@@ -1233,12 +1236,14 @@ function CoachingMode({onAddToResume}){
   const send=async(text)=>{
     const msg=text||input;if(!msg.trim())return;
     const nm=[...msgs,{role:"user",text:msg}];setMsgs(nm);setInput("");setLoading(true);
+    try{
     const hist=nm.map(m=>`${m.role==="ai"?"Coach":"Candidate"}: ${m.text}`).join("\n");
     const resp=await callClaude(`Career coach extracting resume bullets from conversation. Ask ONE follow-up for specifics (numbers, scale, impact). After 3+ user messages, generate bullets.\n${hist}\nRespond naturally. If enough info (3+ user messages), add BULLETS_READY: true at end.`,600);
     const hasBullets=resp.includes("BULLETS_READY: true");
     setMsgs(m=>[...m,{role:"ai",text:resp.replace("BULLETS_READY: true","").trim()}]);
     if(hasBullets){const convo=nm.filter(m=>m.role==="user").map(m=>m.text).join(" ");const bRaw=await callClaude(`Generate 3 powerful resume bullets from: "${convo}". Return ONLY JSON:\n{"bullets":[{"text":"bullet with action verb + metric","type":"Impact","why":"why it works"},{"text":"bullet","type":"Leadership","why":"why"},{"text":"bullet","type":"Scale","why":"why"}]}`);const p=pJ(bRaw);if(p?.bullets)setBullets(p.bullets);}
-    setLoading(false);
+    }catch(e){console.error("Coach error:",e);setMsgs(m=>[...m,{role:"ai",text:"Sorry, I ran into an issue. Try sending your message again."}]);}
+    finally{setLoading(false);}
   };
   return(<div><div className="card" style={{padding:0,overflow:"hidden"}}><div style={{padding:"14px 18px",borderBottom:"1px solid var(--line)",display:"flex",alignItems:"center",gap:10}}><div style={{width:32,height:32,borderRadius:"50%",background:"rgba(244,114,43,.15)",border:"1px solid var(--line)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🧑‍💼</div><div><div style={{fontSize:14,fontWeight:600,color:"var(--cr)"}}>Career Coach</div><div style={{fontSize:12,color:"var(--mu)"}}>Turns your stories into resume bullets</div></div><div style={{marginLeft:"auto",width:8,height:8,borderRadius:"50%",background:"var(--green)",animation:"pulse 2s infinite"}}/></div><div style={{padding:"15px 18px"}}>{msgs.length===1&&<div className="c-starters">{["Tell me about your biggest win","What makes you different?","What scale have you operated at?"].map((s,i)=><span key={i} className="c-starter" onClick={()=>send(s)}>{s}</span>)}</div>}<div className="chat-box" ref={chatRef}>{msgs.map((m,i)=><div key={i} className={`msg ${m.role}`}><div className="msg-lbl">{m.role==="ai"?"Coach":"You"}</div><div className="msg-bubble">{m.text}</div></div>)}{loading&&<div className="msg ai"><div className="msg-lbl">Coach</div><div className="msg-bubble" style={{color:"var(--mu)"}}><span style={{animation:"pulse 1.2s infinite",display:"inline-block"}}>Thinking…</span></div></div>}</div><div className="chat-input-row"><textarea rows={2} placeholder="Tell your story — the coach will pull out the bullets…" value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}/><button className="btn bp bsm" onClick={()=>send()} disabled={loading||!input.trim()} style={{flexShrink:0}}>Send</button></div></div></div>
   {bullets.length>0&&(<div style={{marginTop:14}}>
