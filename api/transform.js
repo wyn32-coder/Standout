@@ -19,34 +19,21 @@ export default async function handler(req, res) {
     claudePrompt = prompt;
   } else if (bullet) {
     // Bullet transformer — used by the landing page demo
-    claudePrompt = `Transform this weak resume bullet into 3 powerful versions. Return ONLY valid JSON (no markdown, no explanation):
+    claudePrompt = `You are a resume expert. Transform this weak resume bullet into 3 powerful versions.
+
+IMPORTANT: Respond with ONLY a raw JSON object. No markdown. No code fences. No explanation. Start your response with { and end with }.
+
 Weak bullet: "${bullet}"
 
-{
-  "versions": [
-    {
-      "label": "Conservative",
-      "text": "improved version that sounds realistic and specific",
-      "why": "what makes this stronger than the original"
-    },
-    {
-      "label": "Impact-Forward",
-      "text": "version emphasizing business impact with plausible metrics added",
-      "why": "what makes this stronger"
-    },
-    {
-      "label": "Executive",
-      "text": "highest-level strategic framing for senior roles",
-      "why": "what makes this stronger"
-    }
-  ]
-}
+Required JSON format:
+{"versions":[{"label":"Conservative","text":"improved version that sounds realistic and specific","why":"what makes this stronger than the original"},{"label":"Impact-Forward","text":"version emphasizing business impact with plausible metrics added","why":"what makes this stronger"},{"label":"Executive","text":"highest-level strategic framing for senior roles","why":"what makes this stronger"}]}
 
 Rules:
 - Each version must start with a strong action verb
 - Add plausible metrics if none exist (e.g. $ amounts, %, team size)
 - Make each version genuinely different in framing
-- Be specific — reference the actual work described`;
+- Be specific — reference the actual work described
+- Output ONLY the JSON object, nothing else`;
   } else {
     return res.status(400).json({ error: 'Missing bullet or prompt' });
   }
@@ -61,7 +48,7 @@ Rules:
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
+        max_tokens: 1500,
         messages: [{ role: 'user', content: claudePrompt }],
       }),
     });
@@ -78,10 +65,15 @@ Rules:
     // For bullet transformer, parse JSON response
     if (bullet || type !== 'general') {
       try {
-        const clean = text.replace(/```json|```/g, '').trim();
+        // Strip markdown fences first
+        let clean = text.replace(/```json\s*/gi, '').replace(/```/g, '').trim();
+        // Extract the first complete JSON object (handles any leading/trailing text)
+        const match = clean.match(/\{[\s\S]*\}/);
+        if (match) clean = match[0];
         const parsed = JSON.parse(clean);
         return res.status(200).json(parsed);
-      } catch {
+      } catch (parseErr) {
+        console.error('JSON parse failed, raw text:', text.slice(0, 200));
         return res.status(200).json({ text });
       }
     }
