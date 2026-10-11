@@ -639,20 +639,34 @@ const CP_QS = [
   {label:"Career Story",title:"What's the through-line of your career?",sub:"If a recruiter had 10 seconds — what's the one thing that should stick? Your narrative arc, not your job history.",hints:["Operator who builds and scales","IC who grew into strategic leader","Domain expert turned cross-functional leader","Builder who turns chaos into systems","Revenue-focused operator"]},
 ];
 
+const API_ERR = "__API_ERROR__";
+// Global error counter — App reads window.__apiErrCount to show outage banner
+window.__apiErrCount = 0;
+window.__apiErrListeners = [];
+function _reportApiErr(){ window.__apiErrCount++; window.__apiErrListeners.forEach(fn=>fn(window.__apiErrCount)); }
+function onApiErr(fn){ window.__apiErrListeners.push(fn); return ()=>{ window.__apiErrListeners=window.__apiErrListeners.filter(f=>f!==fn); }; }
+
 async function callClaude(prompt, maxT = 1000) {
   try {
     const res = await fetch("/api/transform", {
       method:"POST", headers:{"Content-Type":"application/json"},
       body: JSON.stringify({ type:"general", prompt })
     });
+    if(!res.ok){ console.error("API HTTP error:", res.status); _reportApiErr(); return API_ERR; }
     const data = await res.json();
+    if(data.error){ console.error("API returned error:", data.error); _reportApiErr(); return API_ERR; }
     return data.text || "";
   } catch(e) {
     console.error("API error:", e);
-    return "";
+    _reportApiErr();
+    return API_ERR;
   }
 }
-function pJ(t){try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch{return null;}}
+function isApiErr(t){ return !t || t === API_ERR; }
+function pJ(t){
+  if(isApiErr(t)) return null;
+  try{return JSON.parse(t.replace(/```json|```/g,"").trim());}catch{return null;}
+}
 
 // ─── ATS ──────────────────────────────────────────────────────────────────────
 function ATSPanel({result,jobDesc,onImprove}){
@@ -755,7 +769,7 @@ Is this answer specific enough to build strong career positioning?
     try{
       const check = await callClaude(checkPrompt, 200);
       setChecking(false);
-      if(!check || check.trim().toUpperCase().startsWith("CLEAR") || check.trim().length > 80){
+      if(isApiErr(check) || check.trim().toUpperCase().startsWith("CLEAR") || check.trim().length > 80){
         proceedWithAnswer(cur, null);
       } else {
         setClarifyQ(check.trim().replace(/^["']|["']$/g,""));
@@ -2056,6 +2070,9 @@ function App() {
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState("");
   const [saveStatus, setSaveStatus] = useState("");  // "saving" | "saved" | ""
+  const [apiErrCount, setApiErrCount] = useState(0);
+  const [outageBannerDismissed, setOutageBannerDismissed] = useState(false);
+  const showOutageBanner = apiErrCount >= 2 && !outageBannerDismissed;
   const [savedResumes, setSavedResumes] = useState([]);  // [{id,name,result,tone,R,positioning,savedAt}]
   const [svModalOpen, setSvModalOpen] = useState(false);
   const [svMode, setSvMode] = useState("load"); // "load" | "save"
@@ -2066,6 +2083,12 @@ function App() {
 
   // ── Check for magic token in URL on mount ──
   // Handles both ?token= (custom) and #access_token= (Supabase OTP)
+  // Track API errors globally — show outage banner after 2 consecutive failures
+  useEffect(()=>{
+    const unsub = onApiErr(count => setApiErrCount(count));
+    return unsub;
+  },[]);
+
   useEffect(()=>{
     // Check query param first
     const params = new URLSearchParams(window.location.search);
@@ -3290,6 +3313,12 @@ ${result}`;
       
       <div className="app">
         <div className="grid"/>
+        {showOutageBanner&&(
+          <div style={{position:"fixed",top:0,left:0,right:0,zIndex:9999,background:"#e05555",color:"#fff",padding:"10px 20px",display:"flex",alignItems:"center",justifyContent:"space-between",fontSize:13,fontWeight:500,gap:12}}>
+            <span>⚠ We're having trouble reaching our AI right now — your work is saved. Please try again in a moment.</span>
+            <button onClick={()=>setOutageBannerDismissed(true)} style={{background:"rgba(255,255,255,.2)",border:"none",color:"#fff",padding:"4px 10px",borderRadius:6,cursor:"pointer",fontSize:12,flexShrink:0}}>Dismiss</button>
+          </div>
+        )}
         <nav className="nav">
           <div className="logo" onClick={()=>setActiveTool(null)} style={{cursor:"pointer"}}><svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" style={{flexShrink:0}}><rect width="32" height="32" rx="7" fill="#09101a" stroke="#f4722b" strokeWidth="1.5"/><rect x="5" y="8" width="22" height="4" rx="2" fill="#f4722b"/><rect x="5" y="14" width="15" height="4" rx="2" fill="#f4722b" opacity="0.65"/><rect x="5" y="20" width="18" height="4" rx="2" fill="#f4722b" opacity="0.35"/></svg>Standout</div>
           <div className="nav-r">
