@@ -26,13 +26,14 @@ IMPORTANT: Respond with ONLY a raw JSON object. No markdown. No code fences. No 
 Weak bullet: "${bullet}"
 
 Required JSON format:
-{"versions":[{"label":"Conservative","text":"improved version that sounds realistic and specific","why":"what makes this stronger than the original"},{"label":"Impact-Forward","text":"version emphasizing business impact with plausible metrics added","why":"what makes this stronger"},{"label":"Executive","text":"highest-level strategic framing for senior roles","why":"what makes this stronger"}]}
+{"versions":[{"label":"Solid","text":"improved version that sounds realistic and specific"},{"label":"Stronger","text":"version emphasizing business impact with plausible metrics added"},{"label":"Best","text":"highest-level strategic framing, most compelling version"}]}
 
 Rules:
 - Each version must start with a strong action verb
 - Add plausible metrics if none exist (e.g. $ amounts, %, team size)
 - Make each version genuinely different in framing
 - Be specific — reference the actual work described
+- Write naturally — avoid buzzwords, AI-sounding phrases, or over-the-top language
 - Output ONLY the JSON object, nothing else`;
   } else {
     return res.status(400).json({ error: 'Missing bullet or prompt' });

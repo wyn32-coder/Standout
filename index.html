@@ -898,17 +898,17 @@ function showResults(original, data){
   // Per-version scores — each version scores higher
   // Impact-Forward IS the best score = scoreAfter (they must match)
   const vScores = {
-    'Conservative':   Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.55),
-    'Impact-Forward': scoreAfter,   // ← same as main score display
-    'Executive':      Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.78),
+    'Solid':    Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.55),
+    'Stronger': Math.round(scoreBefore + (scoreAfter - scoreBefore) * 0.78),
+    'Best':     scoreAfter,
   };
-  const bestScore = scoreAfter;  // always matches the main counter
+  const bestScore = scoreAfter;
 
   // Build bullet versions with scores
   const verList = document.getElementById('ver-list');
   verList.innerHTML = data.versions.map(v=>{
     const vs = vScores[v.label] || scoreAfter;
-    const isRec = v.label === 'Impact-Forward';
+    const isRec = v.label === 'Best';
     const scoreCls = vs >= 85 ? 'hi' : 'mid';
     return `
       <div class="ver" style="${isRec?'border-left-width:3px;border-left-color:var(--green)':''}">
@@ -923,7 +923,6 @@ function showResults(original, data){
           </div>
         </div>
         <div class="ver-text">${v.text}</div>
-        <div class="ver-why">${v.why}</div>
       </div>
     `;
   }).join('');
