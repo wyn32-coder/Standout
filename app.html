@@ -2474,9 +2474,20 @@ ${lines.map(line=>{
     const txt = input || hookInputRef.current?.value || hookInput;
     if (!txt.trim()) return;
     setHookLoading(true); setHookResult(null);
-    const raw = await callClaude(`Transform this weak resume bullet into 3 powerful versions for a ${ROLES.find(r=>r.id===hookRole)?.name}. Return ONLY JSON:\nWeak: "${txt}"\n{"versions":[{"label":"Conservative","text":"improved version","why":"what makes it stronger"},{"label":"Impact-Forward","text":"with business impact and plausible metrics","why":"what makes it stronger"},{"label":"Executive","text":"highest-level strategic framing","why":"what makes it stronger"}]}`);
-    setHookResult(pJ(raw));
-    setHookLoading(false);
+    try {
+      const raw = await callClaude(`Transform this weak resume bullet into 3 powerful versions for a ${ROLES.find(r=>r.id===hookRole)?.name}. Return ONLY JSON:\nWeak: "${txt}"\n{"versions":[{"label":"Conservative","text":"improved version","why":"what makes it stronger"},{"label":"Impact-Forward","text":"with business impact and plausible metrics","why":"what makes it stronger"},{"label":"Executive","text":"highest-level strategic framing","why":"what makes it stronger"}]}`);
+      const parsed = pJ(raw);
+      if (parsed) {
+        setHookResult(parsed);
+      } else {
+        setHookResult({ error: true });
+      }
+    } catch(e) {
+      console.error("Bullet transform error:", e);
+      setHookResult({ error: true });
+    } finally {
+      setHookLoading(false);
+    }
   };
 
   // Builder
@@ -2999,7 +3010,12 @@ ${result}`;
             {HOOK_EXAMPLES.map((ex,i)=><span key={i} className="hook-ex" onClick={()=>{if(hookInputRef.current)hookInputRef.current.value=ex;setHookInput(ex);runHook(ex);}}>"{ex}"</span>)}
           </div>
           {hookLoading&&<div className="loading" style={{padding:"20px 0"}}><div className="spin"/>Transforming your bullet…</div>}
-          {hookResult&&!hookLoading&&(
+          {hookResult?.error&&!hookLoading&&(
+            <div style={{marginTop:14,padding:"12px 16px",background:"rgba(224,85,85,.1)",border:"1px solid rgba(224,85,85,.3)",borderRadius:10,color:"var(--red)",fontSize:13,textAlign:"center"}}>
+              ⚠ Couldn't transform that bullet — please try again.
+            </div>
+          )}
+          {hookResult&&!hookResult.error&&!hookLoading&&(
             <div className="hook-result">
               <div className="hook-original">{hookInputRef.current?.value||hookInput}</div>
               {hookResult.versions?.map((v,i)=>(
