@@ -795,7 +795,7 @@ Is this answer specific enough to build strong career positioning?
       setGen(true);
       setGenPhase("building");
       const allAnswers = Object.entries(na).map(([k,v])=>`${k}: ${v}`).join("\n");
-
+      try{
       // Step 1: Build positioning bridging story → target role
       const raw = await callClaude(`You are a senior career strategist and executive coach. Build powerful career positioning that bridges this person's story to their target role.
 
@@ -843,8 +843,8 @@ Return ONLY valid JSON:
 
       setPos(p);
       setValidation(pJ(valRaw));
-      setGen(false);
-      setGenPhase("");
+      }catch(e){console.error("Positioning build error:",e);}
+      finally{setGen(false);setGenPhase("");}
     }
   };
 
@@ -926,6 +926,7 @@ Return ONLY valid JSON:
       <div style={{display:"flex",gap:9,marginTop:10}}>
         <button className="btn bp bsm" disabled={!refineInput.trim()||refineLoading} onClick={async()=>{
           setRefineLoading(true);
+          try{
           const refined = await callClaude(`Refine this career positioning based on the feedback below. Keep what's working, improve what's not.
 
 CURRENT POSITIONING:
@@ -947,9 +948,8 @@ Return ONLY JSON: {"roleAlignment":{"score":"strong|good|needs-work","feedback":
             setPos(p);
             setValidation(pJ(valRaw));
           }
-          setRefineLoading(false);
-          setRefining(false);
-          setRefineInput("");
+          }catch(e){console.error("Refine error:",e);}
+          finally{setRefineLoading(false);setRefining(false);setRefineInput("");}
         }}>
           {refineLoading?<><div className="spin"/>Refining…</>:"Refine It →"}
         </button>
@@ -1200,9 +1200,12 @@ function MarketComparison({resumeText,jobDesc,onImprove,targetJobTitle}){
   const [role,setRole]=useState(targetJobTitle||"");const [loading,setLoading]=useState(false);const [data,setData]=useState(null);
   const analyze=async()=>{
     if(!resumeText||!role.trim())return;setLoading(true);setData(null);
+    try{
     const raw=await callClaude(`Recruiter comparing resume vs market benchmarks for "${role}". Return ONLY JSON:\nResume: ${resumeText.slice(0,1500)}${jobDesc?`
 JD: ${jobDesc.slice(0,500)}`:""}\n{"percentile":65,"percentileLabel":"Top 35% of candidates","dimensions":[{"label":"Experience Depth","score":72,"benchmark":60,"note":"brief observation"},{"label":"Metrics & Impact","score":45,"benchmark":70,"note":"observation"},{"label":"ATS Optimization","score":80,"benchmark":65,"note":"observation"},{"label":"Role Alignment","score":55,"benchmark":70,"note":"observation"}],"topPercentHas":["specific thing 1","thing 2","thing 3"],"youAreMissing":["missing 1","missing 2","missing 3"],"quickWins":["1 specific change to make","another quick win"]}`);
-    setData(pJ(raw));setLoading(false);
+    setData(pJ(raw));
+    }catch(e){console.error("Market compare error:",e);}
+    finally{setLoading(false);}
   };
   return(<div><div className="card"><div style={{fontFamily:"'Fraunces',serif",fontSize:20,color:"var(--cr)",marginBottom:5}}>Live Market Comparison</div><div style={{fontSize:14,color:"var(--mu)",marginBottom:16,lineHeight:1.6}}>See how your resume ranks against others competing for the same role</div><div className="fg"><label className="fl">Target Role</label><input placeholder='"Director of Customer Success" or "Senior Software Engineer"' value={role} onChange={e=>setRole(e.target.value)}/></div><button className="btn bp" onClick={analyze} disabled={loading||!resumeText||!role.trim()}>{loading?"Analyzing…":"Compare to Market ✦"}</button>{!resumeText&&<p style={{fontSize:13,color:"var(--red)",marginTop:9}}>Generate a resume first in Step 3.</p>}</div>
   {loading&&<div className="loading"><div className="spin"/>Benchmarking…</div>}
@@ -1261,8 +1264,8 @@ function CoachingMode({onAddToResume}){
 // ─── TOOL: RECRUITER FEEDBACK ─────────────────────────────────────────────────
 function RecruiterFeedback({resumeText,jobDesc,onImprove}){
   const [loading,setLoading]=useState(false);const [fb,setFb]=useState(null);
-  const analyze=async()=>{setLoading(true);setFb(null);const raw=await callClaude(`Senior recruiter brutal resume review. Return ONLY JSON:\n${resumeText}${jobDesc?`
-JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary":"2-sentence gut reaction","verdict":"3-4 sentence verdict","callbackProbability":"High","callbackReason":"1 sentence","strongBullets":[{"text":"exact bullet","reason":"why it works"}],"weakBullets":[{"text":"exact bullet","reason":"why it fails"}],"topStrengths":[{"label":"title","detail":"specific"}],"criticalFixes":[{"label":"title","detail":"fix"}],"redFlags":[{"label":"flag","detail":"reaction"}],"missingElements":[{"label":"missing","detail":"why matters"}]}`);setFb(pJ(raw));setLoading(false);};
+  const analyze=async()=>{setLoading(true);setFb(null);try{const raw=await callClaude(`Senior recruiter brutal resume review. Return ONLY JSON:\n${resumeText}${jobDesc?`
+JD: ${jobDesc}`:""}\n{"grade":"A","gradeLabel":"Strong Candidate","gradeSummary":"2-sentence gut reaction","verdict":"3-4 sentence verdict","callbackProbability":"High","callbackReason":"1 sentence","strongBullets":[{"text":"exact bullet","reason":"why it works"}],"weakBullets":[{"text":"exact bullet","reason":"why it fails"}],"topStrengths":[{"label":"title","detail":"specific"}],"criticalFixes":[{"label":"title","detail":"fix"}],"redFlags":[{"label":"flag","detail":"reaction"}],"missingElements":[{"label":"missing","detail":"why matters"}]}`);setFb(pJ(raw));}catch(e){console.error("Feedback error:",e);}finally{setLoading(false);}};
   if(!resumeText)return<div className="empty"><div className="empty-icon">📋</div><div className="empty-title">Complete Step 3 first</div><p style={{fontSize:13}}>Generate a resume, then come back here for feedback.</p></div>;
   const cbC={High:"var(--green)",Medium:"var(--o)",Low:"var(--red)"};
   return(<div>{!fb&&!loading&&(<div className="card" style={{textAlign:"center",padding:36}}><div style={{fontSize:36,marginBottom:12}}>🧑‍💼</div><div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"var(--cr)",marginBottom:8}}>Recruiter Review</div><p style={{fontSize:14,color:"var(--mu)",marginBottom:22,lineHeight:1.65}}>Grade, callback probability, and bullet-by-bullet analysis — exactly how a recruiter sees your resume.</p><button className="btn bp" onClick={analyze}>Analyze My Resume ✦</button></div>)}{loading&&<div className="loading"><div className="spin"/>Reviewing your resume…</div>}
@@ -1355,7 +1358,7 @@ function JobTracker(){
   const openEdit=(a)=>{setForm({...a});setEdit(a.id);setModal(true);};
   const saveForm=()=>{if(!form.company||!form.role)return;edit?save2(apps.map(a=>a.id===edit?{...form,id:edit}:a)):save2([...apps,{...form,id:Date.now()}]);setModal(false);};
   const stats={total:apps.length,interviews:apps.filter(a=>["Interview","Final Round","Offer"].includes(a.stage)).length,offers:apps.filter(a=>a.stage==="Offer").length,rate:apps.length?Math.round((apps.filter(a=>a.stage!=="Applied"&&a.stage!=="Rejected").length/apps.length)*100):0};
-  const getInsights=async()=>{if(apps.length<2)return;setILoad(true);const raw=await callClaude(`Career coach analyzing applications. Return ONLY JSON:\n${apps.map(a=>`${a.company}|${a.role}|${a.stage}${a.notes?"|"+a.notes:""}${a.resumeVersion?"|Resume:"+a.resumeVersion:""}`).join("\n")}\n{"insights":[{"icon":"emoji","text":"**Bold insight** explanation referencing actual data"}]}\n4-5 insights.`);setInsights(pJ(raw));setILoad(false);};
+  const getInsights=async()=>{if(apps.length<2)return;setILoad(true);try{const raw=await callClaude(`Career coach analyzing applications. Return ONLY JSON:\n${apps.map(a=>`${a.company}|${a.role}|${a.stage}${a.notes?"|"+a.notes:""}${a.resumeVersion?"|Resume:"+a.resumeVersion:""}`).join("\n")}\n{"insights":[{"icon":"emoji","text":"**Bold insight** explanation referencing actual data"}]}\n4-5 insights.`);setInsights(pJ(raw));}catch(e){console.error("Insights error:",e);}finally{setILoad(false);}};
   return(<div><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18,flexWrap:"wrap",gap:10}}><div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"var(--cr)"}}>Job Tracker</div><button className="btn bp bsm" onClick={openNew}>+ Add Application</button></div>
   <div className="trk-stats">{[{n:stats.total,l:"Applied",c:"var(--o)"},{n:stats.interviews,l:"Interviews",c:"var(--purple)"},{n:stats.offers,l:"Offers",c:"var(--green)"},{n:`${stats.rate}%`,l:"Response Rate",c:"var(--blue)"}].map((s,i)=><div key={i} className="tstat"><div className="tsnum" style={{color:s.c}}>{s.n}</div><div className="tslbl">{s.l}</div></div>)}</div>
   {apps.length===0?(<div className="empty"><div className="empty-icon">📊</div><div className="empty-title">No applications yet</div><p style={{fontSize:13,marginBottom:18}}>Track your pipeline to learn what's working.</p><button className="btn bp bsm" onClick={openNew}>Add First Application</button></div>):(<div className="alist">{apps.sort((a,b)=>new Date(b.date)-new Date(a.date)).map(a=><div key={a.id} className="arow" onClick={()=>openEdit(a)}><div style={{flex:1,minWidth:100}}><div className="aco">{a.company}</div><div className="arole">{a.role}</div></div><span className="abadge" style={{background:`${STAGE_C[a.stage]}18`,color:STAGE_C[a.stage]}}>{a.stage}</span><span className="adate">{a.date}</span><div className="aacts" onClick={e=>e.stopPropagation()}><button className="btn bgh bxs" onClick={()=>openEdit(a)}>Edit</button><button className="btn bgh bxs" style={{color:"var(--red)"}} onClick={()=>save2(apps.filter(x=>x.id!==a.id))}>✕</button></div></div>)}</div>)}
@@ -1485,9 +1488,12 @@ Each "framework" should reference specific content from THEIR resume (companies,
       const data = pJ(raw);
       if (data && data.behavioral) {
         setQuestions(data);
+      } else {
+        setQuestions({error: true});
       }
     } catch(e) {
       console.error(e);
+      setQuestions({error: true});
     }
     setLoading(false);
   }
@@ -1549,7 +1555,8 @@ Give feedback in this JSON format:
         </div>
       )}
       {loading && <div className="loading"><div className="spin"/>Crafting your tailored interview questions…</div>}
-      {questions && !practiceQ && (
+      {questions?.error && <div className="card" style={{textAlign:"center",color:"var(--red)",padding:24}}>⚠ Couldn't generate questions — please try again.</div>}
+      {questions && !questions.error && !practiceQ && (
         <div>
           <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
             {TABS.map(t=>(
@@ -1726,7 +1733,8 @@ Return a JSON object with this EXACT structure (no extra text before or after):
       const raw = await callClaude(prompt);
       const data = pJ(raw);
       if (data && data.headline) setResult(data);
-    } catch(e) { console.error(e); }
+      else setResult({error: true});
+    } catch(e) { console.error(e); setResult({error: true}); }
     setLoading(false);
   }
 
@@ -1745,6 +1753,7 @@ Return a JSON object with this EXACT structure (no extra text before or after):
           <div style={{fontSize:14,color:"var(--mu)"}}>LinkedIn optimization is built from your resume content — build yours in Step 2 first.</div>
         </div>
       )}
+      {result?.error && <div className="rcard" style={{textAlign:"center",color:"var(--red)",padding:24}}>⚠ Couldn't generate LinkedIn content — please try again.</div>}
       {resumeText && !result && !loading && (
         <div className="rcard" style={{textAlign:"center",padding:"32px 24px"}}>
           <div style={{fontSize:40,marginBottom:16}}>💼</div>
@@ -1761,7 +1770,7 @@ Return a JSON object with this EXACT structure (no extra text before or after):
         </div>
       )}
       {loading && <div className="loading"><div className="spin"/>Optimizing your LinkedIn profile…</div>}
-      {result && (
+      {result && !result.error && (
         <div>
           <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
             {TABS.map(t=>(
