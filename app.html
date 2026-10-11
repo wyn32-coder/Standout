@@ -3066,8 +3066,8 @@ ${result}`;
         {!unlocked&&(
           <div style={{marginTop:24,background:"var(--b1)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:22,textAlign:"center"}}>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:20,color:"var(--cr)",marginBottom:6}}>Unlock everything. Pay once.</div>
-            <p style={{fontSize:14,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>One $39 payment. All 11 tools. No monthly subscription — ever.</p>
-            <button className="sbtn" onClick={handleStripe}>🔒 Unlock for $39</button>
+            <p style={{fontSize:14,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>One $29 payment. All 11 tools. No monthly subscription — ever.</p>
+            <button className="sbtn" onClick={handleStripe}>🔒 Unlock for $29</button>
             <div className="snote">Secure checkout · Instant access · No recurring charges</div>
           </div>
         )}
@@ -3106,10 +3106,10 @@ ${result}`;
         <div className="panel-sub">Fill in your details and get a polished, ATS-optimized resume in seconds.</div>
       </div>
       {!canGen&&!loading?(
-        <div className="pw"><h2>Unlock to generate more</h2><p>You've used your free generation. Unlock all 11 tools — resume, interview prep, LinkedIn optimizer and more.</p><div className="ptag">$39</div><span className="psub">one-time · lifetime access</span><ul className="perks">{["Unlimited resumes & cover letters","Interview Prep with AI feedback","LinkedIn Optimizer (headline + about)","All 11 career tools · ATS scoring","Job tracker with AI insights"].map(p=><li key={p}>{p}</li>)}</ul><button className="sbtn" onClick={handleStripe}>🔒 Unlock for $39</button><div className="snote">Secure · Instant · No recurring charges</div></div>
+        <div className="pw"><h2>Unlock to generate more</h2><p>You've used your free generation. Unlock all 11 tools — resume, interview prep, LinkedIn optimizer and more.</p><div className="ptag">$29</div><span className="psub">one-time · lifetime access</span><ul className="perks">{["Unlimited resumes & cover letters","Interview Prep with AI feedback","LinkedIn Optimizer (headline + about)","All 11 career tools · ATS scoring","Job tracker with AI insights"].map(p=><li key={p}>{p}</li>)}</ul><button className="sbtn" onClick={handleStripe}>🔒 Unlock for $29</button><div className="snote">Secure · Instant · No recurring charges</div></div>
       ):(
         <>
-          {!unlocked&&<div className="dbanner"><strong>{Math.max(0,FREE_LIMIT-usage)} free generation</strong> remaining — unlock all 11 tools for <strong>$39</strong></div>}
+          {!unlocked&&<div className="dbanner"><strong>{Math.max(0,FREE_LIMIT-usage)} free generation</strong> remaining — unlock all 11 tools for <strong>$29</strong></div>}
           {/* Sub tabs */}
           <div style={{display:"flex",gap:6,marginBottom:14}}>
             {[["resume","📄 Resume"],["cover","✉️ Cover Letter"]].map(([id,l])=><button key={id} className={`btn ${bSub===id?"bp":"bgh"} bsm`} onClick={()=>{setBSub(id);setResult(null);setShowATS(false);}}>{l}</button>)}
@@ -3283,7 +3283,7 @@ ${result}`;
             )}
             <div className="rbody">{result}</div>
             <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={doRetailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
-            {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback, interview prep, LinkedIn optimizer and more</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all 11 tools · $39</button></div></>}
+            {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback, interview prep, LinkedIn optimizer and more</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all 11 tools · $29</button></div></>}
           </div>
           {showATS&&<ATSPanel result={result} jobDesc={jdATS} onImprove={applyImprovements}/>}
           {result&&<div style={{marginTop:16,display:"flex",gap:9,flexWrap:"wrap"}}><button className="btn bo bsm" onClick={()=>setActiveTool("feedback")}>📋 Get Recruiter Feedback →</button><button className="btn bo bsm" onClick={()=>setActiveTool("sim")}>⏱️ Run 6-Sec Test →</button><button className="btn bo bsm" onClick={()=>setActiveTool("market")}>📊 Compare to Market →</button></div>}
@@ -3336,7 +3336,7 @@ ${result}`;
                 <span>🔐</span><span>Sign in</span>
               </div>
             )}
-            {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $39</button>:<div className="nav-pill">✦ Unlimited</div>}
+            {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $29</button>:<div className="nav-pill">✦ Unlimited</div>}
           </div>
         </div>
         </nav>
