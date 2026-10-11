@@ -10,7 +10,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
-  <script>if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";</script>
+  <script>
+    // Set worker source immediately — and retry once DOM is ready in case the CDN script finished late
+    function initPdfWorker(){
+      if(window.pdfjsLib){
+        pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+      }
+    }
+    initPdfWorker();
+    document.addEventListener("DOMContentLoaded", initPdfWorker);
+  </script>
   <style>body{margin:0;padding:0;}
 @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
 
@@ -2650,7 +2659,11 @@ ${result}`;
       else if(name.endsWith(".pdf") || file.type==="application/pdf"){
         try{
           const arrayBuf = await file.arrayBuffer();
+          // Ensure worker is set (CDN may have finished loading after page init)
           if(typeof pdfjsLib !== "undefined"){
+            if(!pdfjsLib.GlobalWorkerOptions.workerSrc){
+              pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js";
+            }
             const pdf = await pdfjsLib.getDocument({data: arrayBuf}).promise;
             const pages = [];
             for(let i=1; i<=Math.min(pdf.numPages, 5); i++){
@@ -2659,6 +2672,8 @@ ${result}`;
               pages.push(tc.items.map(item=>item.str).join(" "));
             }
             text = pages.join("\n");
+            // Clean up PDF text spacing artifacts
+            text = text.replace(/\s{3,}/g," ").replace(/([a-z])([A-Z])/g,"$1 $2").trim();
           } else {
             setFileStatus("pdferror");
             return;
@@ -3056,7 +3071,7 @@ ${result}`;
     {liStatus==="loading"&&<div className="lis ld">Extracting profile data…</div>}
   </div>)}
   {importTab==="file"&&(<div>
-    <div className="fhint" style={{marginBottom:10}}>Upload a .txt, .doc, or copy-paste your resume as a text file</div>
+    <div className="fhint" style={{marginBottom:10}}>Upload your resume — .pdf, .docx, .txt all supported. If your PDF doesn't import, save as .docx from Word instead.</div>
     <input ref={fileInputRef} type="file" className="upload-input" accept=".txt,.doc,.docx,.pdf,.rtf" onChange={handleFileDrop}/>
     <div className="upload-zone" onClick={()=>fileInputRef.current?.click()} onDragOver={e=>e.preventDefault()} onDrop={handleFileDrop}>
       <div className="upload-icon">📄</div>
@@ -3064,8 +3079,9 @@ ${result}`;
       <div className="upload-sub">.pdf · .docx · .txt · .rtf — all formats supported</div>
     </div>
     {fileStatus==="success"&&<div className="lis ok" style={{marginTop:10}}>✓ Resume imported — scroll down to review and edit your details</div>}
-    {fileStatus==="error"&&<div className="lis err" style={{marginTop:10}}>✕ Couldn't read file — try a .txt file or paste manually</div>}
-    {fileStatus==="loading"&&<div className="lis ld" style={{marginTop:10}}>Reading your resume…</div>}
+    {fileStatus==="error"&&<div className="lis err" style={{marginTop:10}}>✕ Couldn't extract text — the file may be image-based or locked. Try saving as .docx or copy-pasting your resume text below.</div>}
+    {fileStatus==="pdferror"&&<div className="lis err" style={{marginTop:10}}>✕ Couldn't read this PDF — it may be image-based (scanned). Try saving as .docx from Word, or copy-paste your resume text directly into the fields below.</div>}
+    {fileStatus==="loading"&&<div className="lis ld" style={{marginTop:10}}>📄 Reading your resume…</div>}
   </div>)}
   {importTab==="doc"&&(<div>
     <div className="fhint" style={{marginBottom:10}}>Paste a Google Doc link, Notion page, or any URL with your resume</div>
