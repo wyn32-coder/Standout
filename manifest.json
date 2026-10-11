@@ -1,0 +1,27 @@
+{
+  "name": "Standout — AI Career Tools",
+  "short_name": "Standout",
+  "description": "AI-powered career tools to help you land your next role. Resume builder, interview prep, LinkedIn optimizer and more.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#09101a",
+  "theme_color": "#f4722b",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "education", "business"],
+  "screenshots": [],
+  "lang": "en-US"
+}
