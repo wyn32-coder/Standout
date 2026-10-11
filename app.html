@@ -752,15 +752,18 @@ Is this answer specific enough to build strong career positioning?
 - If YES (has metrics, specifics, or clear context) — reply with just: CLEAR
 - If NO (too vague, missing scale/impact/numbers) — reply with ONE short follow-up question (under 15 words) to get the missing specifics. Just the question, nothing else.`;
 
-    const check = await callClaude(checkPrompt, 200);
-    setChecking(false);
-
-    if(check.trim().toUpperCase().startsWith("CLEAR") || check.trim().length > 80){
-      // Answer is good OR AI gave a long response (treat as clear) — move on
+    try{
+      const check = await callClaude(checkPrompt, 200);
+      setChecking(false);
+      if(!check || check.trim().toUpperCase().startsWith("CLEAR") || check.trim().length > 80){
+        proceedWithAnswer(cur, null);
+      } else {
+        setClarifyQ(check.trim().replace(/^["']|["']$/g,""));
+      }
+    }catch(e){
+      // If AI check fails, just proceed — don't block the user
+      setChecking(false);
       proceedWithAnswer(cur, null);
-    } else {
-      // AI has a follow-up question
-      setClarifyQ(check.trim().replace(/^["']|["']$/g,""));
     }
   };
 
