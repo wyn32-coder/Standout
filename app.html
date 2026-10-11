@@ -1423,6 +1423,476 @@ function CoverLetterTool({R, result, tone, TONES, TONE_I, callClaude}){
   );
 }
 
+// ─── INTERVIEW PREP ───────────────────────────────────────────────────────────
+function InterviewPrep({ resumeText, positioning, targetRole, callClaude }) {
+  const [questions, setQuestions] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [practiceQ, setPracticeQ] = useState(null); // {q, why, framework, answer:"", feedback:"", fbLoading:false}
+  const [practiceAns, setPracticeAns] = useState("");
+  const [practiceFb, setPracticeFb] = useState("");
+  const [practiceFbLoading, setPracticeFbLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("behavioral");
+
+  const TABS = [
+    {id:"behavioral", label:"Behavioral", icon:"💬"},
+    {id:"situational", label:"Situational", icon:"🧩"},
+    {id:"role", label:"Role-Specific", icon:"🎯"},
+    {id:"culture", label:"Culture Fit", icon:"🤝"},
+  ];
+
+  async function generate() {
+    if (!resumeText) return;
+    setLoading(true);
+    setQuestions(null);
+    try {
+      const prompt = `You are a senior recruiter and interview coach. Analyze this resume and positioning, then generate 12 tailored interview questions the candidate will likely face.
+
+RESUME:
+${resumeText.slice(0, 2000)}
+
+TARGET ROLE: ${targetRole || "their target role"}
+
+POSITIONING HEADLINE: ${positioning?.headline || "Not set"}
+
+Generate exactly 12 questions, 3 per category. Return a JSON object with this EXACT structure (no extra text):
+{
+  "behavioral": [
+    {"q": "Tell me about a time you...", "why": "They want to test X", "framework": "Use STAR: Situation... Task... Action... Result from your [specific experience from resume]"},
+    {"q": "...", "why": "...", "framework": "..."},
+    {"q": "...", "why": "...", "framework": "..."}
+  ],
+  "situational": [3 objects same structure],
+  "role": [3 objects same structure — highly specific to their actual role/industry],
+  "culture": [3 objects same structure]
+}
+
+Each "framework" should reference specific content from THEIR resume (companies, titles, achievements). Make questions feel tailored, not generic.`;
+
+      const raw = await callClaude(prompt);
+      const data = pJ(raw);
+      if (data && data.behavioral) {
+        setQuestions(data);
+      }
+    } catch(e) {
+      console.error(e);
+    }
+    setLoading(false);
+  }
+
+  async function getFeedback(q) {
+    if (!practiceAns.trim()) return;
+    setPracticeFbLoading(true);
+    setPracticeFb("");
+    try {
+      const prompt = `You are an interview coach. Give direct, honest feedback on this interview answer.
+
+QUESTION: ${q.q}
+WHAT THEY'RE TESTING: ${q.why}
+SUGGESTED FRAMEWORK: ${q.framework}
+
+CANDIDATE'S ANSWER:
+${practiceAns}
+
+Give feedback in this JSON format:
+{
+  "score": 75,
+  "verdict": "Strong start — missing quantified impact",
+  "strengths": ["Good specific example", "Clear situation setup"],
+  "improve": ["Add a number to show scale", "End with the business impact"],
+  "rewrite": "Here's a stronger version: ..."
+}`;
+      const raw = await callClaude(prompt);
+      const data = pJ(raw);
+      setPracticeFb(data);
+    } catch(e) {}
+    setPracticeFbLoading(false);
+  }
+
+  const currentQs = questions ? (questions[activeTab] || []) : [];
+
+  return (
+    <div>
+      {!resumeText && (
+        <div className="rcard" style={{textAlign:"center",padding:"32px 24px"}}>
+          <div style={{fontSize:32,marginBottom:12}}>✍️</div>
+          <div style={{fontSize:16,fontWeight:600,color:"var(--cr)",marginBottom:8}}>Build Your Resume First</div>
+          <div style={{fontSize:14,color:"var(--mu)"}}>Interview questions are tailored to your actual resume — build yours in Step 2 first.</div>
+        </div>
+      )}
+      {resumeText && !questions && !loading && (
+        <div className="rcard" style={{textAlign:"center",padding:"32px 24px"}}>
+          <div style={{fontSize:40,marginBottom:16}}>🎤</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"var(--cr)",marginBottom:10}}>Tailored to <em style={{color:"var(--o)"}}>your</em> resume</div>
+          <div style={{fontSize:14,color:"var(--mu)",marginBottom:24,maxWidth:420,margin:"0 auto 24px",lineHeight:1.7}}>
+            Get 12 interview questions across 4 categories — behavioral, situational, role-specific, and culture — each with a framework built from your actual experience.
+          </div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
+            {["💬 Behavioral (STAR method)","🧩 Situational scenarios","🎯 Role-specific deep dives","🤝 Culture & values"].map(t=>(
+              <span key={t} style={{fontSize:12,background:"rgba(244,114,43,.1)",border:"1px solid var(--line)",color:"var(--o)",padding:"4px 12px",borderRadius:20}}>{t}</span>
+            ))}
+          </div>
+          <button className="sbtn" onClick={generate}>Generate My Interview Prep →</button>
+          {targetRole && <div style={{fontSize:12,color:"var(--mu)",marginTop:12}}>Tailored for: <strong style={{color:"var(--cr)"}}>{targetRole}</strong></div>}
+        </div>
+      )}
+      {loading && <div className="loading"><div className="spin"/>Crafting your tailored interview questions…</div>}
+      {questions && !practiceQ && (
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setActiveTab(t.id)}
+                style={{padding:"8px 16px",borderRadius:8,border:"none",cursor:"pointer",
+                  background:activeTab===t.id?"var(--o)":"rgba(255,255,255,.06)",
+                  color:activeTab===t.id?"#fff":"var(--mu)",fontWeight:600,fontSize:13,
+                  fontFamily:"'DM Sans',sans-serif",transition:"all .18s"}}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:14}}>
+            {currentQs.map((q, i)=>(
+              <div key={i} className="rcard" style={{padding:"20px 22px"}}>
+                <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(244,114,43,.15)",
+                    border:"1.5px solid var(--line)",display:"flex",alignItems:"center",justifyContent:"center",
+                    fontSize:13,color:"var(--o)",fontWeight:700,flexShrink:0}}>
+                    {i+1}
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{fontSize:16,fontWeight:600,color:"var(--cr)",marginBottom:10,lineHeight:1.5}}>{q.q}</div>
+                    <div style={{background:"rgba(244,114,43,.06)",border:"1px solid var(--line)",borderRadius:8,padding:"10px 14px",marginBottom:10}}>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>Why they ask this</div>
+                      <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{q.why}</div>
+                    </div>
+                    <div style={{background:"rgba(61,184,122,.06)",border:"1px solid rgba(61,184,122,.2)",borderRadius:8,padding:"10px 14px",marginBottom:12}}>
+                      <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--green)",marginBottom:4}}>How to answer</div>
+                      <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{q.framework}</div>
+                    </div>
+                    <button onClick={()=>{setPracticeQ(q);setPracticeAns("");setPracticeFb("");}}
+                      style={{background:"transparent",border:"1px solid var(--line)",borderRadius:8,
+                        padding:"7px 16px",fontSize:12,color:"var(--o)",cursor:"pointer",
+                        fontFamily:"'DM Sans',sans-serif",fontWeight:600,transition:"all .18s"}}
+                      onMouseOver={e=>{e.currentTarget.style.background="rgba(244,114,43,.1)"}}
+                      onMouseOut={e=>{e.currentTarget.style.background="transparent"}}>
+                      🎤 Practice this answer →
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{textAlign:"center",marginTop:20}}>
+            <button className="btn bo bsm" onClick={generate}>↺ Regenerate Questions</button>
+          </div>
+        </div>
+      )}
+      {practiceQ && (
+        <div>
+          <button onClick={()=>{setPracticeQ(null);setPracticeFb("");}}
+            style={{background:"transparent",border:"none",color:"var(--o)",cursor:"pointer",
+              fontSize:14,fontFamily:"'DM Sans',sans-serif",fontWeight:600,padding:"0 0 16px"}}>
+            ← Back to all questions
+          </button>
+          <div className="rcard" style={{marginBottom:16}}>
+            <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Practice Question</div>
+            <div style={{fontSize:18,fontWeight:600,color:"var(--cr)",lineHeight:1.5,marginBottom:14}}>{practiceQ.q}</div>
+            <div style={{background:"rgba(61,184,122,.06)",border:"1px solid rgba(61,184,122,.2)",borderRadius:8,padding:"10px 14px"}}>
+              <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--green)",marginBottom:4}}>Your framework</div>
+              <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{practiceQ.framework}</div>
+            </div>
+          </div>
+          <div style={{marginBottom:16}}>
+            <label style={{fontSize:13,fontWeight:600,color:"var(--mu)",display:"block",marginBottom:8}}>Type your answer below — be as detailed as you'd be in the actual interview</label>
+            <textarea rows={8} value={practiceAns} onChange={e=>setPracticeAns(e.target.value)}
+              placeholder="Walk me through your answer here. Include the specific situation, what you did, and the result..."
+              style={{width:"100%",background:"var(--b2)",border:"1px solid var(--b3)",borderRadius:10,
+                padding:"14px 16px",color:"var(--cr)",fontSize:14,lineHeight:1.7,
+                fontFamily:"'DM Sans',sans-serif",resize:"vertical"}}/>
+          </div>
+          <button className="sbtn" onClick={()=>getFeedback(practiceQ)} disabled={!practiceAns.trim()||practiceFbLoading}>
+            {practiceFbLoading?<><div className="spin" style={{width:14,height:14,borderWidth:2}}/>Getting feedback…</>:"Get AI Feedback →"}
+          </button>
+          {practiceFb && (
+            <div style={{marginTop:20}}>
+              <div className="rcard" style={{marginBottom:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:14}}>
+                  <div style={{fontSize:32,fontWeight:700,color:practiceFb.score>=80?"var(--green)":practiceFb.score>=60?"var(--o)":"var(--red)"}}>{practiceFb.score}</div>
+                  <div>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu)",marginBottom:3}}>Answer Score</div>
+                    <div style={{fontSize:15,fontWeight:600,color:"var(--cr)"}}>{practiceFb.verdict}</div>
+                  </div>
+                </div>
+                {practiceFb.strengths?.length > 0 && (
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--green)",marginBottom:6}}>✓ What's working</div>
+                    {practiceFb.strengths.map((s,i)=>(
+                      <div key={i} style={{fontSize:13,color:"var(--mu)",lineHeight:1.5,marginBottom:4}}>• {s}</div>
+                    ))}
+                  </div>
+                )}
+                {practiceFb.improve?.length > 0 && (
+                  <div style={{marginBottom:12}}>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>↑ Strengthen this</div>
+                    {practiceFb.improve.map((s,i)=>(
+                      <div key={i} style={{fontSize:13,color:"var(--mu)",lineHeight:1.5,marginBottom:4}}>• {s}</div>
+                    ))}
+                  </div>
+                )}
+                {practiceFb.rewrite && (
+                  <div style={{background:"rgba(61,184,122,.06)",border:"1px solid rgba(61,184,122,.2)",borderRadius:8,padding:"12px 14px"}}>
+                    <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--green)",marginBottom:6}}>💡 Stronger version</div>
+                    <div style={{fontSize:13,color:"var(--cr)",lineHeight:1.7}}>{practiceFb.rewrite}</div>
+                  </div>
+                )}
+              </div>
+              <button className="btn bo bsm" onClick={()=>{setPracticeAns("");setPracticeFb("");}}>Try Again</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── LINKEDIN OPTIMIZER ────────────────────────────────────────────────────────
+function LinkedInOptimizer({ resumeText, positioning, targetRole, callClaude }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("headline");
+  const [copied, setCopied] = useState({});
+
+  const TABS = [
+    {id:"headline", label:"Headline", icon:"📌"},
+    {id:"about", label:"About Section", icon:"📝"},
+    {id:"bullets", label:"Experience Bullets", icon:"✨"},
+    {id:"keywords", label:"Keywords", icon:"🔍"},
+  ];
+
+  async function generate() {
+    if (!resumeText) return;
+    setLoading(true);
+    setResult(null);
+    try {
+      const prompt = `You are a LinkedIn optimization expert and recruiter. Analyze this resume and create a complete LinkedIn optimization package.
+
+RESUME:
+${resumeText.slice(0, 2000)}
+
+TARGET ROLE: ${targetRole || "their target role"}
+POSITIONING HEADLINE: ${positioning?.headline || "Not set"}
+UNIQUE ANGLE: ${positioning?.uniqueAngle || "Not set"}
+
+Return a JSON object with this EXACT structure (no extra text before or after):
+{
+  "headline": {
+    "options": [
+      {"text": "Option 1 headline (120 chars max)", "why": "Why this works"},
+      {"text": "Option 2 headline", "why": "Why this works"},
+      {"text": "Option 3 headline", "why": "Why this works"}
+    ],
+    "tip": "Key tip for LinkedIn headlines"
+  },
+  "about": {
+    "text": "Full About section (2,600 chars max, 3-4 paragraphs, first person, end with a call to action)",
+    "hook": "The opening hook line (first 2 lines shown before 'see more')",
+    "tip": "Key tip about About sections"
+  },
+  "bullets": [
+    {"original": "A bullet from their resume", "optimized": "Optimized LinkedIn version", "why": "What changed and why"},
+    {"original": "Another bullet", "optimized": "Optimized version", "why": "What changed and why"},
+    {"original": "Another bullet", "optimized": "Optimized version", "why": "What changed and why"}
+  ],
+  "keywords": {
+    "primary": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"],
+    "secondary": ["kw1", "kw2", "kw3", "kw4", "kw5", "kw6", "kw7"],
+    "tip": "How to naturally weave these in",
+    "density": "Your current keyword strength: High/Medium/Low"
+  }
+}`;
+
+      const raw = await callClaude(prompt);
+      const data = pJ(raw);
+      if (data && data.headline) setResult(data);
+    } catch(e) { console.error(e); }
+    setLoading(false);
+  }
+
+  function copyText(text, key) {
+    navigator.clipboard.writeText(text);
+    setCopied(p=>({...p,[key]:true}));
+    setTimeout(()=>setCopied(p=>({...p,[key]:false})), 2000);
+  }
+
+  return (
+    <div>
+      {!resumeText && (
+        <div className="rcard" style={{textAlign:"center",padding:"32px 24px"}}>
+          <div style={{fontSize:32,marginBottom:12}}>✍️</div>
+          <div style={{fontSize:16,fontWeight:600,color:"var(--cr)",marginBottom:8}}>Build Your Resume First</div>
+          <div style={{fontSize:14,color:"var(--mu)"}}>LinkedIn optimization is built from your resume content — build yours in Step 2 first.</div>
+        </div>
+      )}
+      {resumeText && !result && !loading && (
+        <div className="rcard" style={{textAlign:"center",padding:"32px 24px"}}>
+          <div style={{fontSize:40,marginBottom:16}}>💼</div>
+          <div style={{fontFamily:"'Fraunces',serif",fontSize:22,color:"var(--cr)",marginBottom:10}}>LinkedIn is your <em style={{color:"var(--o)"}}>always-on</em> resume</div>
+          <div style={{fontSize:14,color:"var(--mu)",marginBottom:24,maxWidth:420,margin:"0 auto 24px",lineHeight:1.7}}>
+            87% of recruiters use LinkedIn to source candidates. Get a fully optimized profile — headline, About section, experience bullets, and keyword strategy — all built from your resume.
+          </div>
+          <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap",marginBottom:24}}>
+            {["📌 3 headline options","📝 Full About section","✨ Bullet rewrites","🔍 Keyword strategy"].map(t=>(
+              <span key={t} style={{fontSize:12,background:"rgba(244,114,43,.1)",border:"1px solid var(--line)",color:"var(--o)",padding:"4px 12px",borderRadius:20}}>{t}</span>
+            ))}
+          </div>
+          <button className="sbtn" onClick={generate}>Optimize My LinkedIn →</button>
+        </div>
+      )}
+      {loading && <div className="loading"><div className="spin"/>Optimizing your LinkedIn profile…</div>}
+      {result && (
+        <div>
+          <div style={{display:"flex",gap:8,marginBottom:20,flexWrap:"wrap"}}>
+            {TABS.map(t=>(
+              <button key={t.id} onClick={()=>setActiveTab(t.id)}
+                style={{padding:"8px 16px",borderRadius:8,border:"none",cursor:"pointer",
+                  background:activeTab===t.id?"var(--o)":"rgba(255,255,255,.06)",
+                  color:activeTab===t.id?"#fff":"var(--mu)",fontWeight:600,fontSize:13,
+                  fontFamily:"'DM Sans',sans-serif",transition:"all .18s"}}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
+
+          {activeTab==="headline" && result.headline && (
+            <div>
+              <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+                {result.headline.options?.map((opt,i)=>(
+                  <div key={i} className="rcard" style={{padding:"16px 20px"}}>
+                    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12}}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>Option {i+1}</div>
+                        <div style={{fontSize:16,fontWeight:600,color:"var(--cr)",marginBottom:8,lineHeight:1.4}}>{opt.text}</div>
+                        <div style={{fontSize:12,color:"var(--mu)",fontStyle:"italic"}}>{opt.why}</div>
+                        <div style={{fontSize:11,color:"var(--mu2)",marginTop:4}}>{opt.text?.length} / 220 chars</div>
+                      </div>
+                      <button onClick={()=>copyText(opt.text,`h${i}`)}
+                        style={{background:"transparent",border:"1px solid var(--line)",borderRadius:7,
+                          padding:"6px 12px",fontSize:11,color:copied[`h${i}`]?"var(--green)":"var(--o)",
+                          cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0}}>
+                        {copied[`h${i}`]?"✓ Copied":"Copy"}
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {result.headline.tip && (
+                <div style={{background:"rgba(91,163,217,.06)",border:"1px solid rgba(91,163,217,.2)",borderRadius:10,padding:"12px 16px"}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--blue)",marginBottom:4}}>💡 Pro Tip</div>
+                  <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{result.headline.tip}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab==="about" && result.about && (
+            <div>
+              {result.about.hook && (
+                <div style={{background:"rgba(244,114,43,.08)",border:"1px solid var(--line)",borderRadius:10,padding:"14px 16px",marginBottom:16}}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:6}}>👁 Opening Hook (Shown before "see more")</div>
+                  <div style={{fontSize:15,color:"var(--cr)",fontWeight:500,lineHeight:1.5}}>{result.about.hook}</div>
+                </div>
+              )}
+              <div className="rcard" style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+                  <div style={{fontSize:12,fontWeight:600,color:"var(--mu)"}}>Full About Section</div>
+                  <button onClick={()=>copyText(result.about.text,"about")}
+                    style={{background:"transparent",border:"1px solid var(--line)",borderRadius:7,
+                      padding:"6px 12px",fontSize:11,color:copied["about"]?"var(--green)":"var(--o)",
+                      cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600}}>
+                    {copied["about"]?"✓ Copied":"📋 Copy All"}
+                  </button>
+                </div>
+                <div style={{fontSize:14,color:"var(--cr)",lineHeight:1.8,whiteSpace:"pre-wrap"}}>{result.about.text}</div>
+                <div style={{fontSize:11,color:"var(--mu2)",marginTop:10}}>{result.about.text?.length} / 2,600 chars</div>
+              </div>
+              {result.about.tip && (
+                <div style={{background:"rgba(91,163,217,.06)",border:"1px solid rgba(91,163,217,.2)",borderRadius:10,padding:"12px 16px"}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--blue)",marginBottom:4}}>💡 Pro Tip</div>
+                  <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{result.about.tip}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab==="bullets" && result.bullets && (
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {result.bullets.map((b,i)=>(
+                <div key={i} className="rcard" style={{padding:"18px 20px"}}>
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--mu2)",marginBottom:5}}>Original</div>
+                    <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6,textDecoration:"line-through"}}>{b.original}</div>
+                  </div>
+                  <div style={{marginBottom:10}}>
+                    <div style={{fontSize:10,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--green)",marginBottom:5}}>✓ Optimized for LinkedIn</div>
+                    <div style={{fontSize:14,color:"var(--cr)",lineHeight:1.6,fontWeight:500}}>{b.optimized}</div>
+                  </div>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                    <div style={{fontSize:12,color:"var(--mu)",fontStyle:"italic"}}>{b.why}</div>
+                    <button onClick={()=>copyText(b.optimized,`b${i}`)}
+                      style={{background:"transparent",border:"1px solid var(--line)",borderRadius:7,
+                        padding:"5px 10px",fontSize:11,color:copied[`b${i}`]?"var(--green)":"var(--o)",
+                        cursor:"pointer",fontFamily:"'DM Sans',sans-serif",fontWeight:600,flexShrink:0,marginLeft:10}}>
+                      {copied[`b${i}`]?"✓":"Copy"}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab==="keywords" && result.keywords && (
+            <div>
+              <div className="rcard" style={{marginBottom:14}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+                  <div style={{fontSize:14,fontWeight:600,color:"var(--cr)"}}>Keyword Strength</div>
+                  <div style={{fontSize:13,fontWeight:600,color:"var(--o)"}}>{result.keywords.density}</div>
+                </div>
+                <div style={{marginBottom:14}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--o)",marginBottom:8}}>Primary Keywords (must have)</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {result.keywords.primary?.map((kw,i)=>(
+                      <span key={i} style={{fontSize:13,background:"rgba(244,114,43,.12)",border:"1px solid var(--line)",
+                        color:"var(--o)",padding:"5px 12px",borderRadius:20,fontWeight:500}}>{kw}</span>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--mu)",marginBottom:8}}>Secondary Keywords (nice to have)</div>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    {result.keywords.secondary?.map((kw,i)=>(
+                      <span key={i} style={{fontSize:12,background:"rgba(255,255,255,.04)",border:"1px solid var(--b3)",
+                        color:"var(--mu)",padding:"4px 10px",borderRadius:20}}>{kw}</span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              {result.keywords.tip && (
+                <div style={{background:"rgba(91,163,217,.06)",border:"1px solid rgba(91,163,217,.2)",borderRadius:10,padding:"12px 16px"}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:1.2,textTransform:"uppercase",color:"var(--blue)",marginBottom:4}}>💡 How to use these</div>
+                  <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>{result.keywords.tip}</div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div style={{textAlign:"center",marginTop:24}}>
+            <button className="btn bo bsm" onClick={generate}>↺ Regenerate LinkedIn Profile</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
 const TOOL_STEPS = [
   {id:"positioning",icon:"🎯",num:"1",title:"Define Your Positioning",desc:"5 questions that unlock your career story — what you do, at what scale, and what makes you different.",badge:"Recommended first"},
@@ -1433,7 +1903,9 @@ const TOOL_STEPS = [
   {id:"roleiq",icon:"🧠",num:"6",title:"Role Intelligence",desc:"The exact language, metrics, and framing that hiring managers in your field actually look for.",badge:null},
   {id:"coach",icon:"🧑‍💼",num:"7",title:"Coaching Mode",desc:"Tell me your biggest win. I'll turn your story into 3 powerful resume bullets.",badge:null},
   {id:"tracker",icon:"🗂️",num:"8",title:"Track Your Applications",desc:"Log applications, track stages, and let AI find patterns in what's getting you interviews.",badge:null},
-  {id:"coverletter",icon:"✉️",num:"9",title:"Write Your Cover Letter",desc:"Auto-filled from your polished resume. One click generates a tailored cover letter for any role.",badge:"Do This Last"},
+  {id:"coverletter",icon:"✉️",num:"9",title:"Write Your Cover Letter",desc:"Auto-filled from your polished resume. One click generates a tailored cover letter for any role.",badge:null},
+  {id:"interviewprep",icon:"🎤",num:"10",title:"Interview Prep",desc:"12 tailored interview questions across behavioral, situational, role-specific, and culture — each with a framework built from your actual resume. Practice and get AI feedback.",badge:"New"},
+  {id:"linkedin",icon:"💼",num:"11",title:"LinkedIn Optimizer",desc:"Your resume is your base — get a fully optimized LinkedIn headline, About section, experience bullets, and keyword strategy built from it.",badge:"New"},
 ];
 
 // ── 4-DIMENSION SCORING ENGINE ──
@@ -1832,18 +2304,51 @@ function App() {
   const [copied, setCopied] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
 
-  const downloadResume = () => {
+  const downloadResume = (format="pdf") => {
     if(!result) return;
     const filename = (localR?.name||R.name||"resume").toLowerCase().replace(/\s+/g,"-");
-    const label = bSub==="resume" ? "resume" : "cover-letter";
-    const date = new Date().toISOString().slice(0,25);
-    const blob = new Blob([result], {type:"text/plain"});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${filename}-${label}-${date}.txt`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const date = new Date().toISOString().slice(0,10);
+    if(format==="txt"){
+      const blob = new Blob([result], {type:"text/plain"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href=url; a.download=`${filename}-resume-${date}.txt`; a.click();
+      URL.revokeObjectURL(url);
+    } else {
+      // PDF via print-to-pdf using a hidden styled iframe
+      const lines = result.split("\n");
+      const htmlContent = `<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Arial',sans-serif;font-size:11pt;line-height:1.55;color:#1a1a1a;background:#fff;padding:0.7in 0.75in}
+  h1{font-size:18pt;font-weight:700;margin-bottom:3px;letter-spacing:-.2px}
+  h2{font-size:10.5pt;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;border-bottom:1.5px solid #1a1a1a;padding-bottom:3px;margin:14px 0 7px}
+  .contact{font-size:10pt;color:#444;margin-bottom:14px}
+  p{margin-bottom:5px}
+  li{margin-left:18px;margin-bottom:3px}
+  @media print{body{padding:0.5in 0.6in}@page{margin:0.5in 0.6in;size:letter}}
+</style></head><body>
+${lines.map(line=>{
+  const t=line.trim();
+  if(!t) return "<br/>";
+  if(line.match(/^[A-Z][A-Z\s]{3,}$/)&&line.length<60) return `<h2>${t}</h2>`;
+  if(lines[0]===line) return `<h1>${t}</h1>`;
+  if(t.startsWith("•")||t.startsWith("-")) return `<li>${t.replace(/^[•\-]\s*/,"")}</li>`;
+  return `<p>${t}</p>`;
+}).join("\n")}
+</body></html>`;
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:none;";
+      document.body.appendChild(iframe);
+      iframe.contentWindow.document.open();
+      iframe.contentWindow.document.write(htmlContent);
+      iframe.contentWindow.document.close();
+      setTimeout(()=>{
+        iframe.contentWindow.document.title=`${filename}-resume-${date}`;
+        iframe.contentWindow.print();
+        setTimeout(()=>document.body.removeChild(iframe), 1000);
+      }, 300);
+    }
     setDownloaded(true);
     setTimeout(()=>setDownloaded(false), 2000);
   };
@@ -1912,7 +2417,7 @@ function App() {
   useEffect(()=>{if(result&&resultRef.current)resultRef.current.scrollIntoView({behavior:"smooth",block:"start"});},[result]);
 
   const canGen = unlocked || usage < FREE_LIMIT;
-  const handleStripe = () => { const d = window.confirm("DEMO: Simulate $29 Stripe payment?"); if(d) setUnlocked(true); };
+  const handleStripe = () => { window.open(STRIPE_LINK, "_blank"); };
 
   // Hook: Bullet Transform
   const runHook = async (input) => {
@@ -2446,6 +2951,18 @@ ${result}`;
         </div>
       </div>
 
+      {/* WHAT'S NEW BANNER */}
+      <div style={{maxWidth:680,margin:"0 auto 20px",padding:"0 24px"}}>
+        <div style={{background:"linear-gradient(135deg,rgba(244,114,43,.07),rgba(155,127,232,.05))",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:"16px 20px",display:"flex",gap:16,alignItems:"flex-start"}}>
+          <div style={{fontSize:24,flexShrink:0}}>✨</div>
+          <div>
+            <div style={{fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",color:"var(--o)",marginBottom:4}}>Just Added</div>
+            <div style={{fontSize:14,fontWeight:600,color:"var(--cr)",marginBottom:6}}>Interview Prep + LinkedIn Optimizer are live</div>
+            <div style={{fontSize:13,color:"var(--mu)",lineHeight:1.6}}>Get 12 tailored interview questions built from your resume, practice with AI feedback, and walk away with a fully optimized LinkedIn profile. Steps 10 and 11 below.</div>
+          </div>
+        </div>
+      </div>
+
       {/* JOURNEY */}
       <div className="journey">
         <div className="journey-title">Your path to the offer</div>
@@ -2472,8 +2989,8 @@ ${result}`;
         {!unlocked&&(
           <div style={{marginTop:24,background:"var(--b1)",border:"1px solid rgba(244,114,43,.25)",borderRadius:12,padding:22,textAlign:"center"}}>
             <div style={{fontFamily:"'Fraunces',serif",fontSize:20,color:"var(--cr)",marginBottom:6}}>Unlock everything. Pay once.</div>
-            <p style={{fontSize:14,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>One $29 payment. Every tool. No monthly subscription — ever.</p>
-            <button className="sbtn" onClick={handleStripe}>🔒 Unlock for $29</button>
+            <p style={{fontSize:14,color:"var(--mu)",marginBottom:18,lineHeight:1.6}}>One $39 payment. All 11 tools. No monthly subscription — ever.</p>
+            <button className="sbtn" onClick={handleStripe}>🔒 Unlock for $39</button>
             <div className="snote">Secure checkout · Instant access · No recurring charges</div>
           </div>
         )}
@@ -2512,10 +3029,10 @@ ${result}`;
         <div className="panel-sub">Fill in your details and get a polished, ATS-optimized resume in seconds.</div>
       </div>
       {!canGen&&!loading?(
-        <div className="pw"><h2>Unlock to generate more</h2><p>You've used your free generation. Unlock all 8 tools for a one-time payment.</p><div className="ptag">$29</div><span className="psub">one-time · lifetime access</span><ul className="perks">{["Unlimited resumes & cover letters","All 8 career tools","ATS scoring","Job tracker with AI insights"].map(p=><li key={p}>{p}</li>)}</ul><button className="sbtn" onClick={handleStripe}>🔒 Pay $29 with Stripe</button><div className="snote">Secure · Instant · No recurring charges</div></div>
+        <div className="pw"><h2>Unlock to generate more</h2><p>You've used your free generation. Unlock all 11 tools — resume, interview prep, LinkedIn optimizer and more.</p><div className="ptag">$39</div><span className="psub">one-time · lifetime access</span><ul className="perks">{["Unlimited resumes & cover letters","Interview Prep with AI feedback","LinkedIn Optimizer (headline + about)","All 11 career tools · ATS scoring","Job tracker with AI insights"].map(p=><li key={p}>{p}</li>)}</ul><button className="sbtn" onClick={handleStripe}>🔒 Unlock for $39</button><div className="snote">Secure · Instant · No recurring charges</div></div>
       ):(
         <>
-          {!unlocked&&<div className="dbanner"><strong>{Math.max(0,FREE_LIMIT-usage)} free generation</strong> remaining — unlock all tools for <strong>$29</strong></div>}
+          {!unlocked&&<div className="dbanner"><strong>{Math.max(0,FREE_LIMIT-usage)} free generation</strong> remaining — unlock all 11 tools for <strong>$39</strong></div>}
           {/* Sub tabs */}
           <div style={{display:"flex",gap:6,marginBottom:14}}>
             {[["resume","📄 Resume"],["cover","✉️ Cover Letter"]].map(([id,l])=><button key={id} className={`btn ${bSub===id?"bp":"bgh"} bsm`} onClick={()=>{setBSub(id);setResult(null);setShowATS(false);}}>{l}</button>)}
@@ -2630,8 +3147,11 @@ ${result}`;
                 <button className="ibtn" onClick={()=>{navigator.clipboard.writeText(result);setCopied(true);setTimeout(()=>setCopied(false),2000);}}>
                   {copied?"✓ Copied!":"📋 Copy"}
                 </button>
-                <button className="ibtn" onClick={downloadResume}>
-                  {downloaded?"✓ Downloaded!":"⬇ Download .txt"}
+                <button className="ibtn" onClick={()=>downloadResume("pdf")}>
+                  {downloaded?"✓ Downloaded!":"⬇ PDF"}
+                </button>
+                <button className="ibtn" onClick={()=>downloadResume("txt")} style={{fontSize:11}}>
+                  .txt
                 </button>
                 <button className="ibtn" onClick={()=>setShowATS(s=>!s)}>
                   {showATS?"Hide ATS":"📊 ATS Score"}
@@ -2659,7 +3179,7 @@ ${result}`;
             </div>
             <div style={{fontSize:11,color:"var(--mu2)",padding:"4px 0 10px",display:"flex",alignItems:"center",gap:6}}>
               <span>💡</span>
-              <span>Download as .txt → open in Word or Google Docs to format and save different versions</span>
+              <span>PDF opens your print dialog — save as PDF from there. .txt works in Word or Google Docs for custom formatting.</span>
             </div>
             {/* Save/Load versions bar */}
             {user&&(
@@ -2685,7 +3205,7 @@ ${result}`;
             )}
             <div className="rbody">{result}</div>
             <div className="rtbox"><div className="rttitle">Re-Tailor for a Different Job</div><div className="fg"><textarea rows={3} placeholder="Paste a different job description to instantly re-tailor this document…" value={newJD} onChange={e=>setNewJD(e.target.value)}/></div><button className="btn bo bsm" onClick={doRetailor} disabled={retailoring||!newJD.trim()}>{retailoring?<><div className="spin"/>Re-tailoring…</>:"Re-Tailor →"}</button></div>
-            {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback and see your market ranking</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all tools · $29</button></div></>}
+            {!unlocked&&<><div className="divl"/><div style={{textAlign:"center"}}><p style={{fontSize:13,color:"var(--mu)",marginBottom:12}}>Now get recruiter feedback, interview prep, LinkedIn optimizer and more</p><button className="sbtn" onClick={handleStripe} style={{padding:"12px 28px",fontSize:14}}>🔒 Unlock all 11 tools · $39</button></div></>}
           </div>
           {showATS&&<ATSPanel result={result} jobDesc={jdATS} onImprove={applyImprovements}/>}
           {result&&<div style={{marginTop:16,display:"flex",gap:9,flexWrap:"wrap"}}><button className="btn bo bsm" onClick={()=>setActiveTool("feedback")}>📋 Get Recruiter Feedback →</button><button className="btn bo bsm" onClick={()=>setActiveTool("sim")}>⏱️ Run 6-Sec Test →</button><button className="btn bo bsm" onClick={()=>setActiveTool("market")}>📊 Compare to Market →</button></div>}
@@ -2705,7 +3225,9 @@ ${result}`;
     roleiq:      { stepNum:"6", title:"Role Intelligence",      sub:"The exact language, metrics, and framing that hiring managers in your function look for." },
     coach:       { stepNum:"7", title:"Coaching Mode",          sub:"Tell your career story in plain English. The coach turns it into powerful resume bullets." },
     tracker:     { stepNum:"8", title:"Track Your Applications",sub:"Log every application, track stages, and let AI find patterns in what's getting you interviews." },
-    coverletter: { stepNum:"9", title:"Write Your Cover Letter",sub:"Your resume is polished. Now generate a perfectly tailored cover letter in seconds — auto-filled from everything you've built." },
+    coverletter:   { stepNum:"9",  title:"Write Your Cover Letter",  sub:"Your resume is polished. Now generate a perfectly tailored cover letter in seconds — auto-filled from everything you've built." },
+    interviewprep: { stepNum:"10", title:"Interview Prep",            sub:"12 interview questions tailored to your actual resume — behavioral, situational, role-specific, and culture fit. Practice each answer and get AI coaching feedback." },
+    linkedin:      { stepNum:"11", title:"LinkedIn Optimizer",        sub:"87% of recruiters source candidates on LinkedIn. Get a fully optimized headline (3 options), About section, bullet rewrites, and keyword strategy — all built from your resume." },
   };
 
   return (
@@ -2730,7 +3252,7 @@ ${result}`;
                 <span>🔐</span><span>Sign in</span>
               </div>
             )}
-            {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $29</button>:<div className="nav-pill">✦ Unlimited</div>}
+            {!unlocked?<button className="nav-cta" onClick={handleStripe}>Unlock · $39</button>:<div className="nav-pill">✦ Unlimited</div>}
           </div>
         </div>
         </nav>
@@ -2825,6 +3347,8 @@ ${result}`;
     setSvTab("coverletters");
   }}
 />}
+            {activeTool==="interviewprep"&&<InterviewPrep resumeText={result} positioning={positioning} targetRole={R.targetJobTitle||R.targetRole} callClaude={callClaude}/>}
+            {activeTool==="linkedin"&&<LinkedInOptimizer resumeText={result} positioning={positioning} targetRole={R.targetJobTitle||R.targetRole} callClaude={callClaude}/>}
           </div>
         )}
           </div>
