@@ -47,7 +47,7 @@ Rules:
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-3-haiku-20240307',
+        model: 'claude-haiku-5-5',
         max_tokens: 1500,
         messages: [{ role: 'user', content: claudePrompt }],
       }),
