@@ -8,7 +8,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.development.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
-  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
   <script>
     // Set worker source immediately — and retry once DOM is ready in case the CDN script finished late
@@ -2630,29 +2631,50 @@ ${result}`;
 
       // ── WORD (.docx) ──
       if(name.endsWith(".docx") || file.type.includes("wordprocessingml")){
-        try{
-          const arrayBuf = await file.arrayBuffer();
-          if(typeof mammoth !== "undefined"){
+        const arrayBuf = await file.arrayBuffer();
+        // Try mammoth first
+        if(typeof mammoth !== "undefined"){
+          try{
             const result = await mammoth.extractRawText({arrayBuffer: arrayBuf});
-            text = result.value;
-          } else {
-            // mammoth not loaded - fallback to FileReader
-            text = await new Promise((resolve, reject)=>{
+            text = (result.value||"").trim();
+            console.log("mammoth extracted:", text.length, "chars");
+          }catch(mammothErr){
+            console.warn("mammoth failed:", mammothErr);
+          }
+        }
+        // If mammoth gave nothing, try JSZip to extract word/document.xml directly
+        if((!text || text.length < 20) && typeof JSZip !== "undefined"){
+          try{
+            const zip = await JSZip.loadAsync(arrayBuf);
+            const xmlFile = zip.file("word/document.xml");
+            if(xmlFile){
+              const xmlText = await xmlFile.async("text");
+              // Strip XML tags and decode entities
+              text = xmlText
+                .replace(/<w:p[ >]/g, "\n<w:p ")
+                .replace(/<[^>]+>/g,"")
+                .replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&#x27;/g,"'")
+                .replace(/\n{3,}/g,"\n\n")
+                .trim();
+              console.log("JSZip XML extracted:", text.length, "chars");
+            }
+          }catch(zipErr){
+            console.warn("JSZip fallback failed:", zipErr);
+          }
+        }
+        // If still nothing, try reading as text (works for .doc old format sometimes)
+        if(!text || text.length < 20){
+          try{
+            const rawText = await new Promise((res,rej)=>{
               const reader = new FileReader();
-              reader.onload = e => resolve(e.target.result);
-              reader.onerror = reject;
+              reader.onload = e => res(e.target.result||"");
+              reader.onerror = rej;
               reader.readAsText(file);
             });
-          }
-        }catch(wordErr){
-          console.error("Word parse error:", wordErr);
-          // Try plain text fallback
-          text = await new Promise((resolve, reject)=>{
-            const reader = new FileReader();
-            reader.onload = e => resolve(e.target.result);
-            reader.onerror = reject;
-            reader.readAsText(file);
-          });
+            // Only use if it looks like real text (not binary garbage)
+            const readable = rawText.replace(/[^\x20-\x7E\n\r\t]/g,"");
+            if(readable.length > 50) text = readable;
+          }catch(e2){console.warn("text fallback failed:", e2);}
         }
       }
       // ── PDF ──
@@ -2694,7 +2716,7 @@ ${result}`;
         });
       }
 
-      if(!text || text.trim().length < 20){
+      if(!text || text.trim().length < 10){
         setFileStatus("error");
         return;
       }
